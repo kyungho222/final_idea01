@@ -1,0 +1,8 @@
+{
+    "java.configuration.updateBuildConfiguration": "disabled",
+    "flutterTools.displayGetxContextMenu": false,
+    "flutterTools.displayMobxContextMenu": false,
+    "flutterTools.displayRiverpodContextMenu": false,
+    "flutterTools.displayModularContextMenu": false,
+    "git.ignoreLimitWarning": true
+}
