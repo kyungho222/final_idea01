@@ -30,7 +30,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  speech_to_text: ^7.2.0  # 실제 음성 인식
   permission_handler: ^11.3.1  # 권한 요청
   http: ^0.13.6
   audioplayers: ^6.5.0
@@ -39,6 +38,9 @@ dependencies:
   image_picker: ^1.0.7  # 이미지 선택 (화면 캡처 대체)
   path_provider: ^2.1.2  # 파일 경로 관리
   shared_preferences: ^2.2.2  # 설정 저장
+  flutter_dotenv: ^5.1.0
+  flutter_sound: ^9.2.13
+  speech_to_text: ^6.4.1
   
 dev_dependencies:
   flutter_test:

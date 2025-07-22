@@ -19,13 +19,13 @@ android {
         jvmTarget = "11"
     }
 
-    defaultConfig {
-        applicationId = "com.example.prototype"
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
-    }
+defaultConfig {
+    applicationId = "com.example.prototype"
+    minSdk = 24
+    targetSdk = 34 // 최신으로 권장
+    versionCode = 1
+    versionName = "1.0"
+}
 
     buildTypes {
         release {

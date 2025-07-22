@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
@@ -9,6 +8,8 @@ import 'dart:ui' as ui;
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
+// import 'package:flutter_dotenv/flutter_dotenv.dart'; // 삭제
+import 'package:flutter_sound/flutter_sound.dart';
 
 // 서버 연결 설정
 class ServerConfig {
@@ -26,6 +27,8 @@ class ServerConfig {
 
 // 대화 맥락 저장용
 List<Map<String, dynamic>> conversationHistory = [];
+// 음성 인식 결과 히스토리
+List<String> transcriptHistory = [];
 
 // 민감한 정보 패턴 정의
 class SensitiveDataPatterns {
@@ -936,23 +939,241 @@ class _MyAppState extends State<MyApp> {
   bool _showTouchIndicators = false;
   bool confirmationEnabled = true;
   final player = AudioPlayer();
+  FlutterSoundRecorder? _recorder;
+  bool _isRecording = false;
+  String? _recordedFilePath;
+  Timer? _recordingTimeoutTimer;
+  DateTime _lastVoiceInputTime = DateTime.now();
+  final int _timeoutSeconds = 3; // 무음 대기 시간(초)
+  bool _isHotwordMode = false; // 대기/반복 인식 모드
+  // 상태 변수
+  String _voiceStatus = '';
+  Color _voiceStatusColor = Colors.blue;
+  Timer? _silenceTimer;
+  StreamSubscription? _recorderSubscription;
 
   // 실제 음성 인식 객체
-  stt.SpeechToText? _speechToText;
+  // stt.SpeechToText? _speechToText; // 삭제
   bool _speechEnabled = false;
 
   @override
   void initState() {
     super.initState();
-    _initializeSpeech();
+    _recorder = FlutterSoundRecorder();
+    _initRecorder();
     _requestPermissions();
   }
 
-  Future<void> _initializeSpeech() async {
-    _speechToText = stt.SpeechToText();
-    _speechEnabled = await _speechToText!.initialize();
-    print('음성 인식 초기화: $_speechEnabled');
+  Future<void> _initRecorder() async {
+    await _recorder!.openRecorder();
   }
+
+  Future<void> _startHotwordMode() async {
+    setState(() {
+      _isHotwordMode = true;
+      _voiceStatus = '실시간 음성인식 대기중';
+      _voiceStatusColor = Colors.grey;
+    });
+    await _startContinuousRecording();
+  }
+
+  Future<void> _startContinuousRecording() async {
+    final tempDir = await Directory.systemTemp.createTemp();
+    _recordedFilePath = '${tempDir.path}/recorded.wav';
+    _lastVoiceInputTime = DateTime.now();
+    _silenceTimer?.cancel();
+    await _recorder!.startRecorder(
+      toFile: _recordedFilePath,
+      codec: Codec.pcm16WAV,
+    );
+    setState(() { _isRecording = true; });
+    _recorderSubscription = _recorder!.onProgress!.listen((event) {
+      if (event.decibels != null && event.decibels! > -40) {
+        // 음성 입력 감지됨
+        if (_voiceStatus != '음성인식중') {
+          setState(() {
+            _voiceStatus = '음성인식중';
+            _voiceStatusColor = Colors.blue;
+          });
+        }
+        _lastVoiceInputTime = DateTime.now();
+        _silenceTimer?.cancel();
+      } else {
+        // 무음 감지: 1초 이상 무음이면 자동 종료 및 분석
+        _silenceTimer ??= Timer(Duration(seconds: 1), () async {
+          await _recorder!.stopRecorder();
+          _recorderSubscription?.cancel();
+          setState(() {
+            _isRecording = false;
+            _voiceStatus = '분석중';
+            _voiceStatusColor = Colors.orange;
+          });
+          await Future.delayed(Duration(seconds: 1));
+          if (_recordedFilePath != null) {
+            final file = File(_recordedFilePath!);
+            if (await file.length() < 500) {
+              setState(() {
+                _voiceStatus = '무음 또는 소음만 감지됨';
+                _voiceStatusColor = Colors.red;
+              });
+              print('[INFO] 무음/소음만 감지됨, 분석/터치 생략. 파일 크기: ${await file.length()}B');
+            } else {
+              setState(() {
+                _voiceStatus = '작동중';
+                _voiceStatusColor = Colors.green;
+              });
+              final transcript = await sendAudioToServer(_recordedFilePath!);
+              setState(() {
+                _text = transcript ?? '음성 인식 실패';
+                if (transcript != null && transcript.isNotEmpty) {
+                  _voiceStatus = '작동중';
+                  _voiceStatusColor = Colors.green;
+                  transcriptHistory.add(transcript);
+                } else {
+                  _voiceStatus = '음성 인식 실패';
+                  _voiceStatusColor = Colors.red;
+                }
+              });
+              if (transcript != null && transcript.isNotEmpty) {
+                await captureScreenAndSendToServer(transcript);
+              }
+            }
+          }
+          // 분석이 끝나면 다시 실시간 대기 상태로 복귀
+          setState(() {
+            _voiceStatus = '실시간 음성인식 대기중';
+            _voiceStatusColor = Colors.grey;
+          });
+          // 바로 다시 녹음 시작
+          await _startContinuousRecording();
+          _silenceTimer = null;
+        });
+      }
+    });
+  }
+
+  Future<void> _stopHotwordMode() async {
+    setState(() {
+      _isHotwordMode = false;
+      _isRecording = false;
+      _voiceStatus = '음성인식 꺼짐';
+      _voiceStatusColor = Colors.grey;
+    });
+    await _recorder?.stopRecorder();
+    _recorderSubscription?.cancel();
+    _silenceTimer?.cancel();
+  }
+
+  Future<void> _startRecordingAndProcessOnce() async {
+    final tempDir = await Directory.systemTemp.createTemp();
+    _recordedFilePath = '${tempDir.path}/recorded.wav';
+    _lastVoiceInputTime = DateTime.now();
+    _silenceTimer?.cancel();
+    setState(() {
+      _voiceStatus = '음성인식중';
+      _voiceStatusColor = Colors.blue;
+    });
+
+    await _recorder!.startRecorder(
+      toFile: _recordedFilePath,
+      codec: Codec.pcm16WAV,
+    );
+    setState(() { _isRecording = true; });
+
+    // 실시간 볼륨 감지
+    _recorderSubscription = _recorder!.onProgress!.listen((event) {
+      if (event.decibels != null && event.decibels! > -40) {
+        _lastVoiceInputTime = DateTime.now();
+        _silenceTimer?.cancel();
+      } else {
+        _silenceTimer ??= Timer(Duration(seconds: 1), () async {
+          await _processAfterRecording();
+          _silenceTimer = null;
+        });
+      }
+    });
+
+    // 분석/작동을 await 없이 비동기로 실행
+    _processAfterRecording();
+  }
+
+  Future<void> _processAfterRecording() async {
+    _recordingTimeoutTimer?.cancel();
+    _silenceTimer?.cancel();
+    await _recorder!.stopRecorder();
+    _recorderSubscription?.cancel();
+    setState(() {
+      _isRecording = false;
+      _voiceStatus = '분석중';
+      _voiceStatusColor = Colors.orange;
+    });
+    await Future.delayed(Duration(seconds: 1));
+    if (_recordedFilePath != null) {
+      final file = File(_recordedFilePath!);
+      if (await file.length() < 500) {
+        setState(() {
+          _voiceStatus = '무음 또는 소음만 감지됨';
+          _voiceStatusColor = Colors.red;
+        });
+        print('[INFO] 무음/소음만 감지됨, 분석/터치 생략. 파일 크기: ${await file.length()}B');
+        return;
+      }
+      setState(() {
+        _voiceStatus = '작동중';
+        _voiceStatusColor = Colors.green;
+      });
+      final transcript = await sendAudioToServer(_recordedFilePath!);
+      setState(() {
+        _text = transcript ?? '음성 인식 실패';
+        if (transcript != null && transcript.isNotEmpty) {
+          _voiceStatus = '작동중';
+          _voiceStatusColor = Colors.green;
+          transcriptHistory.add(transcript);
+        } else {
+          _voiceStatus = '음성 인식 실패';
+          _voiceStatusColor = Colors.red;
+        }
+      });
+      if (transcript != null && transcript.isNotEmpty) {
+        await captureScreenAndSendToServer(transcript);
+      }
+    }
+  }
+
+  Future<void> captureScreenAndSendToServer(String userCommand) async {
+    String screenshotPath = await ScreenTouchManager.captureScreen();
+    File imageFile = File(screenshotPath);
+    String imageBase64 = base64Encode(await imageFile.readAsBytes());
+    final response = await http.post(
+      Uri.parse('${ServerConfig.baseUrl}/analyze-image'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'image': imageBase64, 'command': userCommand}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      double x = data['x']?.toDouble() ?? 0;
+      double y = data['y']?.toDouble() ?? 0;
+      await ScreenTouchManager.performVirtualTouch(x, y);
+      _addTouchIndicator(x, y, 'AI 터치');
+    } else {
+      print('이미지 분석 서버 오류: ${response.body}');
+    }
+  }
+
+  @override
+  void dispose() {
+    _recorderSubscription?.cancel();
+    _recorder?.closeRecorder();
+    _recordingTimeoutTimer?.cancel();
+    _silenceTimer?.cancel();
+    super.dispose();
+  }
+
+  // Future<void> _initializeSpeech() async { // 삭제
+  //   _speechToText = stt.SpeechToText(); // 삭제
+  //   _speechEnabled = await _speechToText!.initialize(); // 삭제
+  //   print('음성 인식 초기화: $_speechEnabled'); // 삭제
+  // } // 삭제
 
   Future<void> _requestPermissions() async {
     final success = await PermissionManager.requestAllPermissions();
@@ -991,38 +1212,38 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<void> _listen() async {
-    if (!PermissionManager.hasAudioPermission) {
-      print('마이크 권한이 없습니다. 권한을 요청합니다.');
-      final granted = await PermissionManager.requestAudioPermission();
-      if (!granted) {
-        setState(() {
-          _text = "마이크 권한이 필요합니다. 설정에서 권한을 허용해주세요.";
-          _confidence = 0.0;
-        });
-        return;
-      }
-    }
+    // if (!PermissionManager.hasAudioPermission) { // 삭제
+    //   print('마이크 권한이 없습니다. 권한을 요청합니다.'); // 삭제
+    //   final granted = await PermissionManager.requestAudioPermission(); // 삭제
+    //   if (!granted) { // 삭제
+    //     setState(() { // 삭제
+    //       _text = "마이크 권한이 필요합니다. 설정에서 권한을 허용해주세요."; // 삭제
+    //       _confidence = 0.0; // 삭제
+    //     }); // 삭제
+    //     return; // 삭제
+    //   } // 삭제
+    // } // 삭제
     setState(() {
       _isListening = true;
     });
     try {
-      if (_speechEnabled && _speechToText != null) {
-        await _speechToText!.listen(
-          onResult: (result) {
-            setState(() {
-              _text = result.recognizedWords;
-              _confidence = result.confidence;
-              _isListening = false;
-            });
-          },
-        );
-      } else {
-        setState(() {
-          _text = "음성 인식이 초기화되지 않았습니다.";
-          _confidence = 0.0;
-          _isListening = false;
-        });
-      }
+      // if (_speechEnabled && _speechToText != null) { // 삭제
+      //   await _speechToText!.listen( // 삭제
+      //     onResult: (result) { // 삭제
+      //       setState(() { // 삭제
+      //         _text = result.recognizedWords; // 삭제
+      //         _confidence = result.confidence; // 삭제
+      //         _isListening = false; // 삭제
+      //       }); // 삭제
+      //     }, // 삭제
+      //   ); // 삭제
+      // } else { // 삭제
+      //   setState(() { // 삭제
+      //     _text = "음성 인식이 초기화되지 않았습니다."; // 삭제
+      //     _confidence = 0.0; // 삭제
+      //     _isListening = false; // 삭제
+      //   }); // 삭제
+      // } // 삭제
       // 화면 위 그리기 활성화 및 타이머 재설정
       OverlayManager.startOverlay();
       OverlayManager.resetTimer();
@@ -1228,8 +1449,107 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  /// (1) 음성 파일을 서버로 전송해 텍스트로 변환
+  Future<String?> sendAudioToServer(String filePath) async {
+    File audioFile = File(filePath);
+    List<int> audioBytes = await audioFile.readAsBytes();
+    String audioBase64 = base64Encode(audioBytes);
+
+    final response = await http.post(
+      Uri.parse('${ServerConfig.baseUrl}/speech-to-text'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'audio': audioBase64}),
+    );
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['transcript'];
+    } else {
+      print('서버 오류: \n${response.body}');
+      return null;
+    }
+  }
+
+  /// (2) 텍스트 명령을 서버로 전송해 AI 응답을 받는 함수
+  Future<String?> sendTextToLLM(String text) async {
+    final response = await http.post(
+      Uri.parse(ServerConfig.llmUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'text': text}),
+    );
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return data['response_text'];
+    } else {
+      print('LLM 서버 오류: \n${response.body}');
+      return null;
+    }
+  }
+
+  /// (3) 텍스트를 서버로 전송해 TTS 음성(mp3) 파일을 받아 재생하는 함수
+  Future<void> playTTSAudioFromServer(String text) async {
+    final response = await http.post(
+      Uri.parse(ServerConfig.ttsUrl),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'text': text}),
+    );
+    if (response.statusCode == 200) {
+      final bytes = response.bodyBytes;
+      final file = File('${Directory.systemTemp.path}/output.mp3');
+      await file.writeAsBytes(bytes);
+      final player = AudioPlayer();
+      await player.play(DeviceFileSource(file.path));
+    } else {
+      print('TTS 서버 오류: \n${response.body}');
+    }
+  }
+
+  /// Google Speech-to-Text API를 호출하여 음성 파일을 텍스트로 변환하는 함수
+  // Future<String?> speechToTextFromFile(String filePath) async { // 삭제
+  //   final apiKey = dotenv.env['GOOGLE_SPEECH_API_KEY'] ?? ''; // 삭제
+  //   if (apiKey.isEmpty) { // 삭제
+  //     print('API 키가 설정되어 있지 않습니다.'); // 삭제
+  //     return null; // 삭제
+  //   } // 삭제
+  //   try { // 삭제
+  //     File audioFile = File(filePath); // 삭제
+  //     List<int> audioBytes = await audioFile.readAsBytes(); // 삭제
+  //     String audioBase64 = base64Encode(audioBytes); // 삭제
+  // 삭제
+  //     final url = 'https://speech.googleapis.com/v1/speech:recognize?key=$apiKey'; // 삭제
+  //     final body = jsonEncode({ // 삭제
+  //       "config": { // 삭제
+  //         "encoding": "LINEAR16", // 삭제
+  //         "sampleRateHertz": 16000, // 삭제
+  //         "languageCode": "ko-KR" // 삭제
+  //       }, // 삭제
+  //       "audio": { // 삭제
+  //         "content": audioBase64 // 삭제
+  //       } // 삭제
+  //     }); // 삭제
+  // 삭제
+  //     final response = await http.post( // 삭제
+  //       Uri.parse(url), // 삭제
+  //       headers: {"Content-Type": "application/json"}, // 삭제
+  //       body: body, // 삭제
+  //     ); // 삭제
+  // 삭제
+  //     if (response.statusCode == 200) { // 삭제
+  //       final data = jsonDecode(response.body); // 삭제
+  //       return data['results']?[0]?['alternatives']?[0]?['transcript']; // 삭제
+  //     } else { // 삭제
+  //       print('Google Speech-to-Text 오류: \n${response.body}'); // 삭제
+  //       return null; // 삭제
+  //     } // 삭제
+  //   } catch (e) { // 삭제
+  //     print('음성 파일 변환 오류: $e'); // 삭제
+  //     return null; // 삭제
+  //   } // 삭제
+  // } // 삭제
+
   @override
   Widget build(BuildContext context) {
+    print('build 함수 호출');
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -1262,12 +1582,12 @@ class _MyAppState extends State<MyApp> {
               right: 0,
               bottom: 0,
               child: FloatingActionButton(
-                onPressed: _listen,
-                backgroundColor: isWaiting ? Colors.orange : null,
-                child: Icon(_isListening ? Icons.mic : Icons.mic_none),
+                onPressed: _isHotwordMode ? _stopHotwordMode : _startHotwordMode,
+                backgroundColor: _isHotwordMode ? Colors.red : null,
+                child: Icon(_isHotwordMode ? Icons.stop : Icons.mic),
               ),
             ),
-            if (_isListening)
+            if (_isRecording)
               const Positioned(
                 right: 70,
                 bottom: 10,
@@ -1286,6 +1606,14 @@ class _MyAppState extends State<MyApp> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('음성 인식 결과: $_text'),
+                      Text(
+                        '상태: $_voiceStatus',
+                        style: TextStyle(
+                          color: _voiceStatusColor,
+                          fontSize: 24, // 1.5배 크기
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       Text('신뢰도: $_confidence'),
                       Text('AI 응답: $_response'),
                       const SizedBox(height: 16),
@@ -1301,6 +1629,17 @@ class _MyAppState extends State<MyApp> {
                         const SizedBox(height: 16),
                       ],
                       const Text('대화 맥락(최근 5개):'),
+                      if (transcriptHistory.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: transcriptHistory.reversed.take(5).map((t) => Text(
+                              '• $t',
+                              style: TextStyle(fontSize: 16, color: Colors.black87),
+                            )).toList(),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -1447,6 +1786,50 @@ class _MyAppState extends State<MyApp> {
                   .toList()),
             // 백그라운드 실행 표시
             const BackgroundIndicator(),
+            // 마이크 ON 배지
+            if (_isHotwordMode || _isRecording)
+              Positioned(
+                top: 16,
+                left: 16,
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 300),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _voiceStatus == '음성인식중'
+                        ? Colors.redAccent
+                        : Colors.green.shade600,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedContainer(
+                        duration: Duration(milliseconds: 300),
+                        width: _voiceStatus == '음성인식중' ? 32 : 24,
+                        height: _voiceStatus == '음성인식중' ? 32 : 24,
+                        child: Icon(Icons.mic, color: Colors.white),
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        _voiceStatus == '음성인식중' ? '음성입력중' : '마이크 ON',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -1454,6 +1837,12 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-void main() {
+Future<void> main() async {
+  print('main 시작');
+  // await dotenv.load(); // 삭제
+  print('dotenv 로드 완료'); // 필요시 삭제
   runApp(const MyApp());
 }
+
+// 예시: dotenv에서 API 키 읽기
+// String apiKey = dotenv.env['GOOGLE_SPEECH_API_KEY'] ?? '';
