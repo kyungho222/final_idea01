@@ -10,6 +10,7 @@ import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart'; // 삭제
 import 'package:flutter_sound/flutter_sound.dart';
+import 'package:path_provider/path_provider.dart'; // 에뮬레이터 호환성을 위한 추가
 
 // 서버 연결 설정
 class ServerConfig {
@@ -294,7 +295,390 @@ final List<GridItem> gridItems = [
     url: 'https://open.spotify.com',
     color: Colors.green,
   ),
+  GridItem(
+    number: 13,
+    icon: Icons.movie,
+    label: 'Netflix',
+    url: 'https://www.netflix.com',
+    color: Colors.red,
+  ),
+  GridItem(
+    number: 14,
+    icon: Icons.school,
+    label: 'Coursera',
+    url: 'https://www.coursera.org',
+    color: Colors.blue,
+  ),
+  GridItem(
+    number: 15,
+    icon: Icons.work,
+    label: 'LinkedIn',
+    url: 'https://www.linkedin.com',
+    color: Colors.blue,
+  ),
+  GridItem(
+    number: 16,
+    icon: Icons.photo_camera,
+    label: 'Instagram',
+    url: 'https://www.instagram.com',
+    color: Colors.purple,
+  ),
+  GridItem(
+    number: 17,
+    icon: Icons.flight,
+    label: 'Booking',
+    url: 'https://www.booking.com',
+    color: Colors.blue,
+  ),
+  GridItem(
+    number: 18,
+    icon: Icons.local_taxi,
+    label: 'Uber',
+    url: 'https://www.uber.com',
+    color: Colors.black,
+  ),
+  GridItem(
+    number: 19,
+    icon: Icons.restaurant,
+    label: 'Yelp',
+    url: 'https://www.yelp.com',
+    color: Colors.red,
+  ),
+  GridItem(
+    number: 20,
+    icon: Icons.sports_esports,
+    label: 'Twitch',
+    url: 'https://www.twitch.tv',
+    color: Colors.purple,
+  ),
+  GridItem(
+    number: 21,
+    icon: Icons.article,
+    label: 'Medium',
+    url: 'https://medium.com',
+    color: Colors.black,
+  ),
+  GridItem(
+    number: 22,
+    icon: Icons.design_services,
+    label: 'Figma',
+    url: 'https://www.figma.com',
+    color: Colors.purple,
+  ),
+  GridItem(
+    number: 23,
+    icon: Icons.cloud,
+    label: 'Dropbox',
+    url: 'https://www.dropbox.com',
+    color: Colors.blue,
+  ),
+  GridItem(
+    number: 24,
+    icon: Icons.psychology,
+    label: 'Notion',
+    url: 'https://www.notion.so',
+    color: Colors.black,
+  ),
 ];
+
+// URL 자동 인식 및 생성 유틸리티
+class UrlUtils {
+  // 서비스명으로부터 URL 자동 생성
+  static String generateUrlFromService(String serviceName) {
+    final name = serviceName.toLowerCase().trim();
+    
+    // 일반적인 패턴 매칭
+    final urlPatterns = {
+      'google': 'https://www.google.com',
+      'facebook': 'https://www.facebook.com',
+      'youtube': 'https://www.youtube.com',
+      'instagram': 'https://www.instagram.com',
+      'twitter': 'https://twitter.com',
+      'linkedin': 'https://www.linkedin.com',
+      'github': 'https://github.com',
+      'netflix': 'https://www.netflix.com',
+      'spotify': 'https://open.spotify.com',
+      'amazon': 'https://www.amazon.com',
+      'naver': 'https://www.naver.com',
+      'daum': 'https://www.daum.net',
+      'kakao': 'https://www.kakao.com',
+      'line': 'https://line.me',
+      'discord': 'https://discord.com',
+      'slack': 'https://slack.com',
+      'zoom': 'https://zoom.us',
+      'teams': 'https://teams.microsoft.com',
+      'notion': 'https://www.notion.so',
+      'figma': 'https://www.figma.com',
+      'trello': 'https://trello.com',
+      'asana': 'https://asana.com',
+      'dropbox': 'https://www.dropbox.com',
+      'drive': 'https://drive.google.com',
+      'gmail': 'https://mail.google.com',
+      'outlook': 'https://outlook.live.com',
+      'calendar': 'https://calendar.google.com',
+      'maps': 'https://maps.google.com',
+      'translate': 'https://translate.google.com',
+      'docs': 'https://docs.google.com',
+      'sheets': 'https://sheets.google.com',
+      'slides': 'https://slides.google.com',
+      'meet': 'https://meet.google.com',
+      'classroom': 'https://classroom.google.com',
+      'chatgpt': 'https://chat.openai.com',
+      'gemini': 'https://gemini.google.com',
+      'claude': 'https://claude.ai',
+      'bing': 'https://www.bing.com',
+      'yahoo': 'https://www.yahoo.com',
+      'duckduckgo': 'https://duckduckgo.com',
+      'brave': 'https://search.brave.com',
+      'wikipedia': 'https://www.wikipedia.org',
+      'stackoverflow': 'https://stackoverflow.com',
+      'reddit': 'https://www.reddit.com',
+      'quora': 'https://www.quora.com',
+      'medium': 'https://medium.com',
+      'dev.to': 'https://dev.to',
+      'hashnode': 'https://hashnode.dev',
+      'udemy': 'https://www.udemy.com',
+      'coursera': 'https://www.coursera.org',
+      'edx': 'https://www.edx.org',
+      'khan': 'https://www.khanacademy.org',
+      'freecodecamp': 'https://www.freecodecamp.org',
+      'codecademy': 'https://www.codecademy.com',
+      'leetcode': 'https://leetcode.com',
+      'hackerrank': 'https://www.hackerrank.com',
+      'codewars': 'https://www.codewars.com',
+      'exercism': 'https://exercism.org',
+      'replit': 'https://replit.com',
+      'glitch': 'https://glitch.com',
+      'codesandbox': 'https://codesandbox.io',
+      'jsfiddle': 'https://jsfiddle.net',
+      'codepen': 'https://codepen.io',
+      'jsbin': 'https://jsbin.com',
+      'plunker': 'https://plnkr.co',
+      'stackblitz': 'https://stackblitz.com',
+      'gitpod': 'https://gitpod.io',
+      'github.dev': 'https://github.dev',
+      'gitlab': 'https://gitlab.com',
+      'bitbucket': 'https://bitbucket.org',
+      'sourceforge': 'https://sourceforge.net',
+      'npm': 'https://www.npmjs.com',
+      'yarn': 'https://yarnpkg.com',
+      'pypi': 'https://pypi.org',
+      'rubygems': 'https://rubygems.org',
+      'nuget': 'https://www.nuget.org',
+      'maven': 'https://mvnrepository.com',
+      'gradle': 'https://gradle.org',
+      'docker': 'https://hub.docker.com',
+      'kubernetes': 'https://kubernetes.io',
+      'terraform': 'https://www.terraform.io',
+      'ansible': 'https://www.ansible.com',
+      'jenkins': 'https://www.jenkins.io',
+      'travis': 'https://travis-ci.org',
+      'circleci': 'https://circleci.com',
+      'github actions': 'https://github.com/features/actions',
+      'gitlab ci': 'https://docs.gitlab.com/ee/ci/',
+      'azure devops': 'https://azure.microsoft.com/services/devops/',
+      'jira': 'https://www.atlassian.com/software/jira',
+      'confluence': 'https://www.atlassian.com/software/confluence',
+      'trello': 'https://trello.com',
+      'asana': 'https://asana.com',
+      'monday': 'https://monday.com',
+      'clickup': 'https://clickup.com',
+      'notion': 'https://www.notion.so',
+      'airtable': 'https://airtable.com',
+      'typeform': 'https://www.typeform.com',
+      'google forms': 'https://forms.google.com',
+      'survey monkey': 'https://www.surveymonkey.com',
+      'qualtrics': 'https://www.qualtrics.com',
+      'mailchimp': 'https://mailchimp.com',
+      'sendgrid': 'https://sendgrid.com',
+      'twilio': 'https://www.twilio.com',
+      'stripe': 'https://stripe.com',
+      'paypal': 'https://www.paypal.com',
+      'square': 'https://squareup.com',
+      'shopify': 'https://www.shopify.com',
+      'woocommerce': 'https://woocommerce.com',
+      'magento': 'https://magento.com',
+      'prestashop': 'https://www.prestashop.com',
+      'opencart': 'https://www.opencart.com',
+      'bigcommerce': 'https://www.bigcommerce.com',
+      'squarespace': 'https://www.squarespace.com',
+      'wix': 'https://www.wix.com',
+      'wordpress': 'https://wordpress.com',
+      'webflow': 'https://webflow.com',
+      'bubble': 'https://bubble.io',
+      'glide': 'https://www.glideapps.com',
+      'adalo': 'https://www.adalo.com',
+      'thunkable': 'https://thunkable.com',
+      'appgyver': 'https://www.appgyver.com',
+      'flutter': 'https://flutter.dev',
+      'react native': 'https://reactnative.dev',
+      'xamarin': 'https://dotnet.microsoft.com/apps/xamarin',
+      'ionic': 'https://ionicframework.com',
+      'cordova': 'https://cordova.apache.org',
+      'phonegap': 'https://phonegap.com',
+      'capacitor': 'https://capacitorjs.com',
+      'electron': 'https://www.electronjs.org',
+      'tauri': 'https://tauri.app',
+      'nw.js': 'https://nwjs.io',
+      'react': 'https://reactjs.org',
+      'vue': 'https://vuejs.org',
+      'angular': 'https://angular.io',
+      'svelte': 'https://svelte.dev',
+      'ember': 'https://emberjs.com',
+      'backbone': 'https://backbonejs.org',
+      'jquery': 'https://jquery.com',
+      'bootstrap': 'https://getbootstrap.com',
+      'tailwind': 'https://tailwindcss.com',
+      'material ui': 'https://mui.com',
+      'ant design': 'https://ant.design',
+      'chakra ui': 'https://chakra-ui.com',
+      'semantic ui': 'https://semantic-ui.com',
+      'foundation': 'https://get.foundation',
+      'bulma': 'https://bulma.io',
+      'skeleton': 'https://skeleton.dev',
+      'windicss': 'https://windicss.org',
+      'unocss': 'https://uno.antfu.me',
+      'postcss': 'https://postcss.org',
+      'sass': 'https://sass-lang.com',
+      'less': 'https://lesscss.org',
+      'stylus': 'https://stylus-lang.com',
+      'node': 'https://nodejs.org',
+      'deno': 'https://deno.land',
+      'bun': 'https://bun.sh',
+      'python': 'https://www.python.org',
+      'java': 'https://www.java.com',
+      'c#': 'https://dotnet.microsoft.com',
+      'c++': 'https://isocpp.org',
+      'c': 'https://www.cprogramming.com',
+      'go': 'https://golang.org',
+      'rust': 'https://www.rust-lang.org',
+      'swift': 'https://swift.org',
+      'kotlin': 'https://kotlinlang.org',
+      'scala': 'https://www.scala-lang.org',
+      'clojure': 'https://clojure.org',
+      'haskell': 'https://www.haskell.org',
+      'erlang': 'https://www.erlang.org',
+      'elixir': 'https://elixir-lang.org',
+      'php': 'https://www.php.net',
+      'ruby': 'https://www.ruby-lang.org',
+      'perl': 'https://www.perl.org',
+      'lua': 'https://www.lua.org',
+      'r': 'https://www.r-project.org',
+      'matlab': 'https://www.mathworks.com/products/matlab.html',
+      'julia': 'https://julialang.org',
+      'dart': 'https://dart.dev',
+      'typescript': 'https://www.typescriptlang.org',
+      'coffeescript': 'https://coffeescript.org',
+      'elm': 'https://elm-lang.org',
+      'purescript': 'https://www.purescript.org',
+      'reason': 'https://reasonml.github.io',
+      'ocaml': 'https://ocaml.org',
+      'f#': 'https://fsharp.org',
+      'crystal': 'https://crystal-lang.org',
+      'nim': 'https://nim-lang.org',
+      'zig': 'https://ziglang.org',
+      'v': 'https://vlang.io',
+      'odin': 'https://odin-lang.org',
+      'jai': 'https://github.com/BSVino/JaiPrimer',
+      'carbon': 'https://github.com/carbon-language/carbon-lang',
+      'mojo': 'https://docs.modular.com/mojo',
+      'sql': 'https://www.sql.org',
+      'mysql': 'https://www.mysql.com',
+      'postgresql': 'https://www.postgresql.org',
+      'sqlite': 'https://www.sqlite.org',
+      'mongodb': 'https://www.mongodb.com',
+      'redis': 'https://redis.io',
+      'cassandra': 'https://cassandra.apache.org',
+      'elasticsearch': 'https://www.elastic.co/elasticsearch',
+      'influxdb': 'https://www.influxdata.com',
+      'neo4j': 'https://neo4j.com',
+      'dynamodb': 'https://aws.amazon.com/dynamodb/',
+      'firebase': 'https://firebase.google.com',
+      'supabase': 'https://supabase.com',
+      'planetscale': 'https://planetscale.com',
+      'vercel': 'https://vercel.com',
+      'netlify': 'https://www.netlify.com',
+      'heroku': 'https://www.heroku.com',
+      'railway': 'https://railway.app',
+      'render': 'https://render.com',
+      'fly.io': 'https://fly.io',
+      'digitalocean': 'https://www.digitalocean.com',
+      'aws': 'https://aws.amazon.com',
+      'azure': 'https://azure.microsoft.com',
+      'gcp': 'https://cloud.google.com',
+      'ibm cloud': 'https://www.ibm.com/cloud',
+      'oracle cloud': 'https://www.oracle.com/cloud/',
+      'alibaba cloud': 'https://www.alibabacloud.com',
+      'tencent cloud': 'https://intl.cloud.tencent.com',
+      'huawei cloud': 'https://www.huaweicloud.com',
+      'linode': 'https://www.linode.com',
+      'vultr': 'https://www.vultr.com',
+      'ovh': 'https://www.ovh.com',
+      'scaleway': 'https://www.scaleway.com',
+      'hetzner': 'https://www.hetzner.com',
+      'contabo': 'https://contabo.com',
+      'kamatera': 'https://www.kamatera.com',
+      'upcloud': 'https://upcloud.com',
+      'exoscale': 'https://www.exoscale.com',
+      'cloudflare': 'https://www.cloudflare.com',
+      'fastly': 'https://www.fastly.com',
+      'akamai': 'https://www.akamai.com',
+      'stackpath': 'https://www.stackpath.com',
+      'bunny': 'https://bunny.net',
+      'keycdn': 'https://www.keycdn.com',
+      'cdn77': 'https://www.cdn77.com',
+      'limelight': 'https://www.limelight.com',
+      'edgecast': 'https://www.edgestream.com',
+      'level3': 'https://www.lumen.com',
+      'cogent': 'https://www.cogentco.com',
+      'he': 'https://he.net',
+      'tunnelbroker': 'https://tunnelbroker.net',
+      'ngrok': 'https://ngrok.com',
+      'localtunnel': 'https://github.com/localtunnel/localtunnel',
+      'serveo': 'https://serveo.net',
+      'pagekite': 'https://pagekite.net',
+      'localhost.run': 'https://localhost.run',
+      'ngrok.io': 'https://ngrok.io',
+      'localtunnel.me': 'https://localtunnel.me',
+      'serveo.net': 'https://serveo.net',
+      'pagekite.me': 'https://pagekite.me',
+      'localhost.run': 'https://localhost.run',
+    };
+    
+    // 정확한 매칭 시도
+    if (urlPatterns.containsKey(name)) {
+      return urlPatterns[name]!;
+    }
+    
+    // 부분 매칭 시도
+    for (final entry in urlPatterns.entries) {
+      if (entry.key.contains(name) || name.contains(entry.key)) {
+        return entry.value;
+      }
+    }
+    
+    // 기본 패턴으로 URL 생성
+    return 'https://www.$name.com';
+  }
+  
+  // URL 유효성 검사
+  static bool isValidUrl(String url) {
+    try {
+      final uri = Uri.parse(url);
+      return uri.hasScheme && uri.hasAuthority;
+    } catch (e) {
+      return false;
+    }
+  }
+  
+  // URL 정규화
+  static String normalizeUrl(String url) {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      return 'https://$url';
+    }
+    return url;
+  }
+}
 
 // 화면 인식 및 가상 터치 관리자
 class ScreenTouchManager {
@@ -951,6 +1335,7 @@ class _MyAppState extends State<MyApp> {
   Color _voiceStatusColor = Colors.blue;
   Timer? _silenceTimer;
   StreamSubscription? _recorderSubscription;
+  Timer? _maxRecordingTimer; // 최대 녹음 시간 타이머
 
   // 실제 음성 인식 객체
   // stt.SpeechToText? _speechToText; // 삭제
@@ -1064,79 +1449,175 @@ class _MyAppState extends State<MyApp> {
     _silenceTimer?.cancel();
   }
 
+  // 마이크 권한 요청 및 녹음 시작
   Future<void> _startRecordingAndProcessOnce() async {
-    final tempDir = await Directory.systemTemp.createTemp();
-    _recordedFilePath = '${tempDir.path}/recorded.wav';
-    _lastVoiceInputTime = DateTime.now();
-    _silenceTimer?.cancel();
-    setState(() {
-      _voiceStatus = '음성인식중';
-      _voiceStatusColor = Colors.blue;
-    });
+    if (_isListening) return;
 
-    await _recorder!.startRecorder(
-      toFile: _recordedFilePath,
-      codec: Codec.pcm16WAV,
-    );
-    setState(() { _isRecording = true; });
-
-    // 실시간 볼륨 감지
-    _recorderSubscription = _recorder!.onProgress!.listen((event) {
-      if (event.decibels != null && event.decibels! > -40) {
-        _lastVoiceInputTime = DateTime.now();
-        _silenceTimer?.cancel();
-      } else {
-        _silenceTimer ??= Timer(Duration(seconds: 1), () async {
-          await _processAfterRecording();
-          _silenceTimer = null;
-        });
-      }
-    });
-
-    // 분석/작동을 await 없이 비동기로 실행
-    _processAfterRecording();
-  }
-
-  Future<void> _processAfterRecording() async {
-    _recordingTimeoutTimer?.cancel();
-    _silenceTimer?.cancel();
-    await _recorder!.stopRecorder();
-    _recorderSubscription?.cancel();
-    setState(() {
-      _isRecording = false;
-      _voiceStatus = '분석중';
-      _voiceStatusColor = Colors.orange;
-    });
-    await Future.delayed(Duration(seconds: 1));
-    if (_recordedFilePath != null) {
-      final file = File(_recordedFilePath!);
-      if (await file.length() < 500) {
+    // 마이크 권한 요청 (에뮬레이터용 개선)
+    var status = await Permission.microphone.status;
+    if (!status.isGranted) {
+      status = await Permission.microphone.request();
+      if (!status.isGranted) {
         setState(() {
-          _voiceStatus = '무음 또는 소음만 감지됨';
+          _voiceStatus = '마이크 권한 필요';
           _voiceStatusColor = Colors.red;
         });
-        print('[INFO] 무음/소음만 감지됨, 분석/터치 생략. 파일 크기: ${await file.length()}B');
         return;
       }
-      setState(() {
-        _voiceStatus = '작동중';
-        _voiceStatusColor = Colors.green;
-      });
-      final transcript = await sendAudioToServer(_recordedFilePath!);
-      setState(() {
-        _text = transcript ?? '음성 인식 실패';
-        if (transcript != null && transcript.isNotEmpty) {
-          _voiceStatus = '작동중';
-          _voiceStatusColor = Colors.green;
-          transcriptHistory.add(transcript);
+    }
+
+    // 추가 권한 요청 (에뮬레이터 호환성)
+    await Permission.storage.request();
+    await Permission.manageExternalStorage.request();
+
+    setState(() {
+      _isListening = true;
+      _voiceStatus = '음성인식 시작';
+      _voiceStatusColor = Colors.blue;
+      _text = '';
+      _response = '';
+    });
+
+    try {
+      // 녹음 파일 경로 설정 (에뮬레이터 호환)
+      final directory = await getTemporaryDirectory();
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final filePath = '${directory.path}/recorded_$timestamp.wav';
+      
+      // 녹음기 초기화 (에뮬레이터 최적화)
+      _recorder = FlutterSoundRecorder();
+      await _recorder!.openRecorder();
+      
+      // 에뮬레이터에서 더 나은 음성 품질을 위한 설정
+      await _recorder!.setSubscriptionDuration(const Duration(milliseconds: 100));
+      
+      // 녹음 시작
+      await _recorder!.startRecorder(
+        toFile: filePath,
+        codec: Codec.pcm16WAV,
+        sampleRate: 44100, // 에뮬레이터에서 더 나은 품질
+        numChannels: 1,    // 모노 채널
+      );
+
+      // 실시간 볼륨 감지 (에뮬레이터 최적화)
+      _recorderSubscription = _recorder!.onProgress!.listen((event) {
+        if (event.decibels != null) {
+          // 음성 입력 감지 로그 추가
+          print('🎤 볼륨 감지: ${event.decibels}dB');
+          
+          // 에뮬레이터에서 더 민감한 감지
+          if (event.decibels! > -50) { // 임계값 조정
+            print('🔊 음성 입력 감지됨! 볼륨: ${event.decibels}dB');
+            _lastVoiceInputTime = DateTime.now();
+            _silenceTimer?.cancel();
+            
+            setState(() {
+              _voiceStatus = '음성 입력 감지됨';
+              _voiceStatusColor = Colors.green;
+            });
+          } else {
+            print('🔇 무음 감지됨. 볼륨: ${event.decibels}dB');
+            // 무음 감지 (1초로 단축)
+            _silenceTimer ??= Timer(const Duration(seconds: 1), () async {
+              print('⏰ 1초 무음으로 자동 종료');
+              await _stopRecordingAndProcess();
+            });
+          }
         } else {
-          _voiceStatus = '음성 인식 실패';
-          _voiceStatusColor = Colors.red;
+          print('⚠️ 볼륨 정보 없음');
         }
       });
-      if (transcript != null && transcript.isNotEmpty) {
-        await captureScreenAndSendToServer(transcript);
+
+      // 최대 녹음 시간 (짧은 음성 입력에 맞춤)
+      _maxRecordingTimer = Timer(const Duration(seconds: 5), () async {
+        print('⏰ 최대 5초 녹음 시간 초과');
+        await _stopRecordingAndProcess();
+      });
+
+    } catch (e) {
+      print('녹음 시작 오류: $e');
+      setState(() {
+        _isListening = false;
+        _voiceStatus = '녹음 시작 실패';
+        _voiceStatusColor = Colors.red;
+      });
+    }
+  }
+
+  Future<void> _stopRecordingAndProcess() async {
+    print('🛑 녹음 종료 시작');
+    _maxRecordingTimer?.cancel();
+    _silenceTimer?.cancel();
+    _recorderSubscription?.cancel();
+    
+    try {
+      final recordedFile = await _recorder!.stopRecorder();
+      print('✅ 녹음 파일 생성: $recordedFile');
+      
+      setState(() { 
+        _isListening = false;
+        _isRecording = false;
+        _voiceStatus = '녹음 완료';
+        _voiceStatusColor = Colors.blue;
+      });
+
+      await Future.delayed(Duration(seconds: 1));
+      
+      if (recordedFile != null) {
+        print('📁 녹음 파일 크기 확인 중...');
+        final file = File(recordedFile);
+        final fileSize = await file.length();
+        print('📊 파일 크기: ${fileSize} bytes');
+        
+        if (fileSize > 512) { // 512 bytes 이상으로 낮춤
+          print('✅ 파일 크기 충분함. 서버 전송 시작');
+          setState(() {
+            _voiceStatus = '음성 분석중';
+            _voiceStatusColor = Colors.orange;
+          });
+          
+          final transcript = await sendAudioToServer(recordedFile);
+          print('🎯 음성 인식 결과: $transcript');
+          
+          if (transcript != null && transcript.isNotEmpty) {
+            setState(() {
+              _text = transcript;
+              _confidence = 0.8; // 임시 신뢰도
+              _voiceStatus = '음성인식 완료';
+              _voiceStatusColor = Colors.green;
+            });
+            
+            // 음성 인식 완료 후 AI 분석을 순차적으로 진행
+            await _displayAIAnalysis(transcript);
+          } else {
+            print('❌ 음성 인식 실패');
+            setState(() {
+              _voiceStatus = '음성인식 실패';
+              _voiceStatusColor = Colors.red;
+            });
+          }
+        } else {
+          print('❌ 파일 크기가 너무 작음: ${fileSize} bytes');
+          setState(() {
+            _voiceStatus = '음성 입력 부족';
+            _voiceStatusColor = Colors.red;
+          });
+        }
+      } else {
+        print('❌ 녹음 파일이 null');
+        setState(() {
+          _voiceStatus = '녹음 실패';
+          _voiceStatusColor = Colors.red;
+        });
       }
+    } catch (e) {
+      print('❌ 녹음 종료 중 오류: $e');
+      setState(() {
+        _isListening = false;
+        _isRecording = false;
+        _voiceStatus = '녹음 오류';
+        _voiceStatusColor = Colors.red;
+      });
     }
   }
 
@@ -1166,6 +1647,7 @@ class _MyAppState extends State<MyApp> {
     _recorder?.closeRecorder();
     _recordingTimeoutTimer?.cancel();
     _silenceTimer?.cancel();
+    _maxRecordingTimer?.cancel(); // 추가
     super.dispose();
   }
 
@@ -1547,6 +2029,236 @@ class _MyAppState extends State<MyApp> {
   //   } // 삭제
   // } // 삭제
 
+  // 음성 명령을 AI로 분석하는 함수
+  Future<void> _analyzeVoiceCommand(String command) async {
+    setState(() {
+      isWaiting = true;
+      _voiceStatus = 'AI 분석중';
+      _voiceStatusColor = Colors.orange;
+    });
+
+    try {
+      // 화면 분석
+      final screenData = await ScreenTouchManager.captureScreen();
+      final analysis = await ScreenTouchManager.analyzeScreen(screenData);
+
+      setState(() {
+        _screenAnalysis = analysis;
+      });
+
+      // AI 서버에 명령 전송
+      final response = await http.post(
+        Uri.parse(ServerConfig.llmUrl),
+        body: {
+          'text': command,
+          'confidence': _confidence.toString(),
+          'screen_analysis': _screenAnalysis,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        setState(() {
+          _response = data['response_text'] ?? 'AI 응답을 받았습니다.';
+          conversationHistory.add(data);
+          isWaiting = false;
+          _voiceStatus = 'AI 분석 완료';
+          _voiceStatusColor = Colors.green;
+        });
+
+        // TTS로 응답 재생
+        await _playTTS(_response);
+
+        // 명령어 처리 (가상 터치 등)
+        if (data['action'] != null) {
+          await _handleAction(data['action']);
+        }
+
+        // 화면 캡처 자동 삭제
+        await ScreenTouchManager.cleanupScreenshot();
+
+      } else {
+        setState(() {
+          _response = 'AI 서버 연결 오류';
+          isWaiting = false;
+          _voiceStatus = 'AI 분석 실패';
+          _voiceStatusColor = Colors.red;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _response = 'AI 분석 중 오류: $e';
+        isWaiting = false;
+        _voiceStatus = 'AI 분석 오류';
+        _voiceStatusColor = Colors.red;
+      });
+    }
+  }
+
+  // AI 분석 결과를 별도로 표시하는 함수
+  Future<void> _displayAIAnalysis(String command) async {
+    setState(() {
+      _voiceStatus = 'AI 분석 준비중';
+      _voiceStatusColor = Colors.blue;
+    });
+
+    // AI 분석 시작 (대기 시간 단축)
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    await _analyzeVoiceCommand(command);
+  }
+
+  // 테스트용 텍스트 입력 다이얼로그 (에뮬레이터용)
+  void _showTestInputDialog(BuildContext context) {
+    final TextEditingController controller = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('테스트 음성 명령 입력'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: '예: 1번을 클릭해줘, 페이스북 열어줘',
+              border: OutlineInputBorder(),
+            ),
+            maxLines: 3,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (controller.text.isNotEmpty) {
+                  Navigator.of(context).pop();
+                  // 입력된 텍스트를 음성 인식 결과로 설정
+                  setState(() {
+                    _text = controller.text;
+                    transcriptHistory.add(controller.text);
+                  });
+                  // AI 분석 시작
+                  _displayAIAnalysis(controller.text);
+                }
+              },
+              child: const Text('테스트 실행'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // 숫자 버튼 선택 시 처리
+  void _selectNumberButton(int number) {
+    print('🔢 숫자 버튼 선택: $number');
+    
+    setState(() {
+      _text = '$number번을 클릭해줘';
+      _confidence = 0.9; // 높은 신뢰도
+      _voiceStatus = '숫자 버튼 선택됨';
+      _voiceStatusColor = Colors.green;
+    });
+    
+    // AI 분석 시작
+    _displayAIAnalysis('$number번을 클릭해줘');
+  }
+
+  // 숫자 선택 모달창 표시
+  void _showNumberSelectionModal(BuildContext context) {
+    print('🔢 숫자 선택 모달창 호출됨');
+    
+    showDialog(
+      context: context,
+      barrierDismissible: true, // 배경 터치로 닫기 가능
+      builder: (BuildContext context) {
+        print('🔢 모달창 빌더 실행됨');
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.touch_app, color: Colors.red.shade600),
+              const SizedBox(width: 8),
+              Text(
+                '숫자 선택',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red.shade700,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '원하는 숫자를 선택해주세요:',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: List.generate(5, (index) {
+                  return GestureDetector(
+                    onTap: () {
+                      print('🔢 숫자 ${index + 1} 선택됨');
+                      Navigator.of(context).pop();
+                      _selectNumberButton(index + 1);
+                    },
+                    child: Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade100,
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Colors.red.shade300,
+                          width: 2,
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
+          actions: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: () {
+                    print('🔢 모달창 취소됨');
+                    Navigator.of(context).pop();
+                  },
+                  child: Text(
+                    '취소',
+                    style: TextStyle(color: Colors.grey.shade600),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      print('🔢 모달창 닫힘');
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     print('build 함수 호출');
@@ -1582,17 +2294,27 @@ class _MyAppState extends State<MyApp> {
               right: 0,
               bottom: 0,
               child: FloatingActionButton(
-                onPressed: _isHotwordMode ? _stopHotwordMode : _startHotwordMode,
-                backgroundColor: _isHotwordMode ? Colors.red : null,
-                child: Icon(_isHotwordMode ? Icons.stop : Icons.mic),
+                onPressed: _isListening ? null : _startRecordingAndProcessOnce,
+                backgroundColor: _isListening ? Colors.red : null,
+                child: Icon(_isListening ? Icons.stop : Icons.mic),
               ),
             ),
-            if (_isRecording)
+            if (_isListening)
               const Positioned(
                 right: 70,
                 bottom: 10,
                 child: Icon(Icons.hearing, color: Colors.green, size: 40),
               ),
+            // 테스트용 텍스트 입력 버튼 (에뮬레이터용)
+            Positioned(
+              right: 0,
+              bottom: 80,
+              child: FloatingActionButton.small(
+                onPressed: () => _showTestInputDialog(context),
+                backgroundColor: Colors.orange,
+                child: const Icon(Icons.edit),
+              ),
+            ),
           ],
         ),
         body: Stack(
@@ -1605,18 +2327,146 @@ class _MyAppState extends State<MyApp> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('음성 인식 결과: $_text'),
-                      Text(
-                        '상태: $_voiceStatus',
-                        style: TextStyle(
-                          color: _voiceStatusColor,
-                          fontSize: 24, // 1.5배 크기
-                          fontWeight: FontWeight.bold,
+                      // 음성 인식 결과를 더 크고 명확하게 표시
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: _text.isNotEmpty ? Colors.blue.shade50 : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _text.isNotEmpty ? Colors.blue.shade200 : Colors.grey.shade300,
+                            width: 2,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.mic,
+                                  color: _text.isNotEmpty ? Colors.blue : Colors.grey,
+                                  size: 24,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '음성 인식 결과',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: _text.isNotEmpty ? Colors.blue.shade700 : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              _text.isEmpty ? '음성을 입력해주세요...' : _text,
+                              style: TextStyle(
+                                fontSize: _text.isNotEmpty ? 20 : 16,
+                                fontWeight: _text.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
+                                color: _text.isNotEmpty ? Colors.black87 : Colors.grey.shade600,
+                                height: 1.4,
+                              ),
+                            ),
+                            if (_text.isNotEmpty) ...[
+                              const SizedBox(height: 8),
+                              Text(
+                                '신뢰도: ${(_confidence * 100).toStringAsFixed(1)}%',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
-                      Text('신뢰도: $_confidence'),
-                      Text('AI 응답: $_response'),
                       const SizedBox(height: 16),
+                      
+
+                      
+                      const SizedBox(height: 16),
+                      
+                      // AI 응답을 별도로 표시
+                      if (_response.isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16.0),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.green.shade200,
+                              width: 2,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.smart_toy, color: Colors.green.shade600),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'AI 응답',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                _response,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.green.shade800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // 상태 표시
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: _voiceStatusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: _voiceStatusColor,
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _isListening ? Icons.mic : Icons.info,
+                              color: _voiceStatusColor,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _voiceStatus.isEmpty ? '대기중' : _voiceStatus,
+                              style: TextStyle(
+                                color: _voiceStatusColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
                       if (_screenAnalysis.isNotEmpty) ...[
                         const Text(
                           '화면 분석:',
@@ -1628,17 +2478,54 @@ class _MyAppState extends State<MyApp> {
                         ),
                         const SizedBox(height: 16),
                       ],
-                      const Text('대화 맥락(최근 5개):'),
-                      if (transcriptHistory.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 8.0, bottom: 8.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: transcriptHistory.reversed.take(5).map((t) => Text(
-                              '• $t',
-                              style: TextStyle(fontSize: 16, color: Colors.black87),
-                            )).toList(),
-                          ),
+                      
+
+                      // 음성 입력 부족 시 숫자 선택 버튼만 표시
+                      if (_voiceStatus == '음성 입력 부족')
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                padding: const EdgeInsets.all(16.0),
+                                decoration: BoxDecoration(
+                                  color: Colors.red.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.red.shade200,
+                                    width: 2,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.warning, color: Colors.red.shade600),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '음성 입력 부족',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton.icon(
+                              onPressed: () => _showNumberSelectionModal(context),
+                              icon: Icon(Icons.touch_app, color: Colors.white),
+                              label: Text('숫자 선택하기'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red.shade600,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                     ],
                   ),
@@ -1679,27 +2566,40 @@ class _MyAppState extends State<MyApp> {
                               final item = gridItems[index];
                               return GestureDetector(
                                 onTap: () async {
-                                  // 화면 위 그리기 활성화
-                                  OverlayManager.startOverlay();
-
-                                  // 터치 표시 추가
-                                  _addTouchIndicator(
-                                    100 + (index % 4) * 80,
-                                    400 + (index ~/ 4) * 80,
-                                    '${item.number}번',
-                                  );
-
-                                  // URL 실행
+                                  print('그리드 아이템 클릭: ${item.number} - ${item.label}');
+                                  print('URL: ${item.url}');
+                                  
                                   try {
                                     final uri = Uri.parse(item.url);
+                                    print('URI 파싱 성공: $uri');
+                                    
+                                    // URL 실행 가능 여부 확인
                                     if (await canLaunchUrl(uri)) {
+                                      print('URL 실행 시작: $uri');
                                       await launchUrl(
                                         uri,
                                         mode: LaunchMode.externalApplication,
                                       );
+                                      print('URL 실행 완료: $uri');
+                                    } else {
+                                      print('URL 실행 불가능: $uri');
+                                      // 사용자에게 알림
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text('${item.label} 링크를 열 수 없습니다.'),
+                                          backgroundColor: Colors.orange,
+                                        ),
+                                      );
                                     }
                                   } catch (e) {
                                     print('URL 실행 실패: $e');
+                                    // 사용자에게 오류 알림
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('${item.label} 링크 실행 중 오류가 발생했습니다.'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
                                   }
                                 },
                                 child: Container(
