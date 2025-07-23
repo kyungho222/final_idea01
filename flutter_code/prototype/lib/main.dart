@@ -12,12 +12,13 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart'; // 에뮬레이터 호환성을 위한 추가
 import 'package:flutter/services.dart'; // 파일 상단에 추가
+import 'package:app_settings/app_settings.dart'; // 접근성 설정 이동을 위한 패키지 추가
 
 // 서버 연결 설정
 class ServerConfig {
   // 개발 환경별 서버 URL 설정
   static const String baseUrl = 'http://10.0.2.2:8000'; // 에뮬레이터용
-  // static const String baseUrl = 'http://192.168.1.100:8000';  // 실제 디바이스용 (컴퓨터 IP)
+  // static const String baseUrl = 'http://192.168.219.109:8000';  // 실제 디바이스용 (컴퓨터 IP)
   // static const String baseUrl = 'https://your-server.com/api';  // 원격 서버용
 
   static const String llmEndpoint = '/llm';
@@ -144,15 +145,14 @@ class PermissionManager {
   }
 
   static Future<bool> requestAllPermissions() async {
-    final results = await Future.wait([
-      requestAudioPermission(),
-      requestStoragePermission(),
-      requestCameraPermission(),
-      requestScreenCapturePermission(),
-      requestTouchPermission(),
-      requestAccessibilityPermission(),
-    ]);
-    return results.every((result) => result);
+    // 여러 권한을 한 번에 요청 (중복 요청 방지)
+    final statuses = await [
+      Permission.microphone,
+      Permission.storage,
+      Permission.camera,
+      // 필요시 Permission.manageExternalStorage 등 추가
+    ].request();
+    return statuses.values.every((status) => status.isGranted);
   }
 }
 
@@ -1348,6 +1348,44 @@ class _MyAppState extends State<MyApp> {
   final bool _speechEnabled = false;
   bool _showNumberSelectionUI = false; // 숫자 선택 UI 표시 여부
 
+  static const platform = MethodChannel('com.example.prototype/accessibility');
+
+  Future<bool> isAccessibilityServiceEnabled() async {
+    try {
+      final enabled = await platform.invokeMethod('isAccessibilityServiceEnabled');
+      return enabled == true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _testNativeTouch() async {
+    final enabled = await isAccessibilityServiceEnabled();
+    if (!enabled) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('접근성 서비스가 실행 중이 아닙니다. 설정에서 활성화해 주세요.')),
+        );
+      }
+      return;
+    }
+    try {
+      // 예시: (300, 600) 위치를 터치
+      await platform.invokeMethod('performClick', {'x': 300.0, 'y': 600.0});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('네이티브 가상터치 명령 전송 완료!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('가상터치 명령 실패: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1793,11 +1831,12 @@ class _MyAppState extends State<MyApp> {
 
       final response = await http.post(
         Uri.parse(ServerConfig.llmUrl),
-        body: {
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
           'text': text,
           'confidence': confidence.toString(),
           'screen_analysis': _screenAnalysis,
-        },
+        }),
       );
 
       final endTime = DateTime.now();
@@ -1811,7 +1850,7 @@ class _MyAppState extends State<MyApp> {
       logMessage += '- 응답 데이터: ${data.toString()}\n';
 
       setState(() {
-        _response = data['response_text'] ?? '서버 응답을 받았습니다.';
+        _response = data['response_text'] ?? data['result'] ?? '서버 응답을 받았습니다.';
         conversationHistory.add(data);
         isWaiting = false;
       });
@@ -1943,7 +1982,8 @@ class _MyAppState extends State<MyApp> {
     try {
       final response = await http.post(
         Uri.parse(ServerConfig.ttsUrl),
-        body: {'text': text},
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'text': text}),
       );
       final bytes = response.bodyBytes;
       final file = File('${Directory.systemTemp.path}/output.mp3');
@@ -2076,11 +2116,12 @@ class _MyAppState extends State<MyApp> {
       final response = await http
           .post(
             Uri.parse(ServerConfig.llmUrl),
-            body: {
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
               'text': command,
               'confidence': _confidence.toString(),
               'screen_analysis': _screenAnalysis,
-            },
+            }),
           )
           .timeout(const Duration(seconds: 30));
       await logDebug('AI 서버 응답: ${response.statusCode} ${response.body}');
@@ -2275,6 +2316,11 @@ class _MyAppState extends State<MyApp> {
                 );
               },
             ),
+            IconButton(
+              icon: const Icon(Icons.touch_app),
+              onPressed: _testNativeTouch,
+              tooltip: '네이티브 가상터치 테스트',
+            ),
           ],
         ),
         floatingActionButton: Stack(
@@ -2383,53 +2429,52 @@ class _MyAppState extends State<MyApp> {
                       ),
                       const SizedBox(height: 16),
                       // 음성 입력 부족/숫자 선택하기 버튼 Row (불필요한 영역 없이 바로)
-                      if (_voiceStatus == '음성 입력 부족')
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            OutlinedButton.icon(
-                              icon: const Icon(
-                                Icons.warning,
-                                color: Colors.red,
-                              ),
-                              label: const Text(
-                                '음성 입력 부족',
-                                style: TextStyle(color: Colors.red),
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Colors.red),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
-                              onPressed: null,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(
+                              Icons.warning,
+                              color: Colors.red,
                             ),
-                            const SizedBox(width: 16),
-                            ElevatedButton.icon(
-                              icon: const Icon(
-                                Icons.touch_app,
-                                color: Colors.white,
-                              ),
-                              label: const Text('숫자 선택하기'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
-                              ),
-                              onPressed: () => _showNumberSelection(context),
+                            label: const Text(
+                              '음성 입력 부족',
+                              style: TextStyle(color: Colors.red),
                             ),
-                          ],
-                        ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Colors.red),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            onPressed: null,
+                          ),
+                          const SizedBox(width: 16),
+                          ElevatedButton.icon(
+                            icon: const Icon(
+                              Icons.touch_app,
+                              color: Colors.white,
+                            ),
+                            label: const Text('숫자 선택하기'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.red,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            onPressed: () => _showNumberSelection(context),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
@@ -2795,3 +2840,30 @@ Future<String> readDebugLog() async {
     return '로그 읽기 실패: $e';
   }
 }
+
+  // 접근성 권한 체크 및 요청 함수
+  Future<void> _checkAndRequestAccessibilityPermission(BuildContext context) async {
+    if (!PermissionManager.hasAccessibilityPermission) {
+      // 접근성 권한이 없으면 안내 다이얼로그 표시
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('접근성 권한 필요'),
+          content: const Text('가상터치 기능을 사용하려면 접근성 권한이 필요합니다.\n설정 화면으로 이동하시겠습니까?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                AppSettings.openAppSettings();
+              },
+              child: const Text('설정으로 이동'),
+            ),
+          ],
+        ),
+      );
+    }
+  }

@@ -40,6 +40,7 @@ dependencies:
   shared_preferences: ^2.2.2  # 설정 저장
   flutter_dotenv: ^5.1.0
   flutter_sound: ^9.2.13  # record 대신 원래 패키지 사용
+  app_settings: ^6.1.1
   
 dev_dependencies:
   flutter_test:
