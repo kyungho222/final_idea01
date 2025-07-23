@@ -1331,8 +1331,8 @@ class _MyAppState extends State<MyApp> {
   final int _timeoutSeconds = 3; // 무음 대기 시간(초)
   bool _isHotwordMode = false; // 대기/반복 인식 모드
   // 상태 변수
-  String _voiceStatus = '';
-  Color _voiceStatusColor = Colors.blue;
+  String _voiceStatus = '대기 중';
+  Color _voiceStatusColor = Colors.grey;
   Timer? _silenceTimer;
   StreamSubscription? _recorderSubscription;
   Timer? _maxRecordingTimer; // 최대 녹음 시간 타이머
@@ -1340,6 +1340,7 @@ class _MyAppState extends State<MyApp> {
   // 실제 음성 인식 객체
   // stt.SpeechToText? _speechToText; // 삭제
   bool _speechEnabled = false;
+  bool _showNumberSelectionUI = false; // 숫자 선택 UI 표시 여부
 
   @override
   void initState() {
@@ -1458,7 +1459,7 @@ class _MyAppState extends State<MyApp> {
     if (!status.isGranted) {
       status = await Permission.microphone.request();
       if (!status.isGranted) {
-        setState(() {
+    setState(() {
           _voiceStatus = '마이크 권한 필요';
           _voiceStatusColor = Colors.red;
         });
@@ -1492,15 +1493,15 @@ class _MyAppState extends State<MyApp> {
       await _recorder!.setSubscriptionDuration(const Duration(milliseconds: 100));
       
       // 녹음 시작
-      await _recorder!.startRecorder(
+    await _recorder!.startRecorder(
         toFile: filePath,
-        codec: Codec.pcm16WAV,
+      codec: Codec.pcm16WAV,
         sampleRate: 44100, // 에뮬레이터에서 더 나은 품질
         numChannels: 1,    // 모노 채널
-      );
+    );
 
       // 실시간 볼륨 감지 (에뮬레이터 최적화)
-      _recorderSubscription = _recorder!.onProgress!.listen((event) {
+    _recorderSubscription = _recorder!.onProgress!.listen((event) {
         if (event.decibels != null) {
           // 음성 입력 감지 로그 추가
           print('🎤 볼륨 감지: ${event.decibels}dB');
@@ -1508,14 +1509,14 @@ class _MyAppState extends State<MyApp> {
           // 에뮬레이터에서 더 민감한 감지
           if (event.decibels! > -50) { // 임계값 조정
             print('🔊 음성 입력 감지됨! 볼륨: ${event.decibels}dB');
-            _lastVoiceInputTime = DateTime.now();
-            _silenceTimer?.cancel();
+        _lastVoiceInputTime = DateTime.now();
+        _silenceTimer?.cancel();
             
             setState(() {
               _voiceStatus = '음성 입력 감지됨';
               _voiceStatusColor = Colors.green;
             });
-          } else {
+      } else {
             print('🔇 무음 감지됨. 볼륨: ${event.decibels}dB');
             // 무음 감지 (1초로 단축)
             _silenceTimer ??= Timer(const Duration(seconds: 1), () async {
@@ -1554,14 +1555,14 @@ class _MyAppState extends State<MyApp> {
       final recordedFile = await _recorder!.stopRecorder();
       print('✅ 녹음 파일 생성: $recordedFile');
       
-      setState(() { 
+    setState(() {
         _isListening = false;
-        _isRecording = false;
+      _isRecording = false;
         _voiceStatus = '녹음 완료';
         _voiceStatusColor = Colors.blue;
-      });
+    });
 
-      await Future.delayed(Duration(seconds: 1));
+    await Future.delayed(Duration(seconds: 1));
       
       if (recordedFile != null) {
         print('📁 녹음 파일 크기 확인 중...');
@@ -1571,7 +1572,7 @@ class _MyAppState extends State<MyApp> {
         
         if (fileSize > 512) { // 512 bytes 이상으로 낮춤
           print('✅ 파일 크기 충분함. 서버 전송 시작');
-          setState(() {
+        setState(() {
             _voiceStatus = '음성 분석중';
             _voiceStatusColor = Colors.orange;
           });
@@ -1580,18 +1581,18 @@ class _MyAppState extends State<MyApp> {
           print('🎯 음성 인식 결과: $transcript');
           
           if (transcript != null && transcript.isNotEmpty) {
-            setState(() {
+      setState(() {
               _text = transcript;
               _confidence = 0.8; // 임시 신뢰도
               _voiceStatus = '음성인식 완료';
-              _voiceStatusColor = Colors.green;
-            });
+        _voiceStatusColor = Colors.green;
+      });
             
             // 음성 인식 완료 후 AI 분석을 순차적으로 진행
             await _displayAIAnalysis(transcript);
           } else {
             print('❌ 음성 인식 실패');
-            setState(() {
+      setState(() {
               _voiceStatus = '음성인식 실패';
               _voiceStatusColor = Colors.red;
             });
@@ -1600,7 +1601,7 @@ class _MyAppState extends State<MyApp> {
           print('❌ 파일 크기가 너무 작음: ${fileSize} bytes');
           setState(() {
             _voiceStatus = '음성 입력 부족';
-            _voiceStatusColor = Colors.red;
+          _voiceStatusColor = Colors.red;
           });
         }
       } else {
@@ -2167,95 +2168,18 @@ class _MyAppState extends State<MyApp> {
     _displayAIAnalysis('$number번을 클릭해줘');
   }
 
-  // 숫자 선택 모달창 표시
-  void _showNumberSelectionModal(BuildContext context) {
-    print('🔢 숫자 선택 모달창 호출됨');
-    
-    showDialog(
-      context: context,
-      barrierDismissible: true, // 배경 터치로 닫기 가능
-      builder: (BuildContext context) {
-        print('🔢 모달창 빌더 실행됨');
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.touch_app, color: Colors.red.shade600),
-              const SizedBox(width: 8),
-              Text(
-                '숫자 선택',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red.shade700,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '원하는 숫자를 선택해주세요:',
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: List.generate(5, (index) {
-                  return GestureDetector(
-                    onTap: () {
-                      print('🔢 숫자 ${index + 1} 선택됨');
-                      Navigator.of(context).pop();
-                      _selectNumberButton(index + 1);
-                    },
-                    child: Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade100,
-                        borderRadius: BorderRadius.circular(30),
-                        border: Border.all(
-                          color: Colors.red.shade300,
-                          width: 2,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${index + 1}',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red.shade700,
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
-          actions: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    print('🔢 모달창 취소됨');
-                    Navigator.of(context).pop();
-                  },
-                  child: Text(
-                    '취소',
-                    style: TextStyle(color: Colors.grey.shade600),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-    ).then((_) {
-      print('🔢 모달창 닫힘');
+  // 숫자 선택 화면 표시
+  void _showNumberSelection(BuildContext context) {
+    print('🔢 숫자 선택 UI 호출됨');
+    setState(() {
+      _showNumberSelectionUI = true;
+    });
+  }
+
+  // 숫자 선택 UI 숨기기
+  void _hideNumberSelection() {
+    setState(() {
+      _showNumberSelectionUI = false;
     });
   }
 
@@ -2314,11 +2238,105 @@ class _MyAppState extends State<MyApp> {
                 backgroundColor: Colors.orange,
                 child: const Icon(Icons.edit),
               ),
-            ),
+              ),
           ],
         ),
         body: Stack(
           children: [
+            // 숫자 선택 UI (화면에 직접 표시)
+            if (_showNumberSelectionUI)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black54,
+                  child: Center(
+                    child: Container(
+                      width: 300,
+                      padding: const EdgeInsets.all(24.0),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 10,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.touch_app, color: Colors.red.shade600),
+                              const SizedBox(width: 8),
+                              Text(
+                                '숫자 선택',
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            '원하는 숫자를 선택해주세요:',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: List.generate(5, (index) {
+                              return GestureDetector(
+                                onTap: () {
+                                  print('🔢 숫자 ${index + 1} 선택됨');
+                                  _hideNumberSelection();
+                                  _selectNumberButton(index + 1);
+                                },
+                                child: Container(
+                                  width: 60,
+                                  height: 60,
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade100,
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: Colors.red.shade300,
+                                      width: 2,
+                                    ),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.red.shade700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                          const SizedBox(height: 20),
+                          TextButton(
+                            onPressed: () {
+                              print('🔢 숫자 선택 취소됨');
+                              _hideNumberSelection();
+                            },
+                            child: Text(
+                              '취소',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Column(
               children: [
                 if (isWaiting) const LinearProgressIndicator(),
@@ -2350,9 +2368,9 @@ class _MyAppState extends State<MyApp> {
                                   size: 24,
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
+                      Text(
                                   '음성 인식 결과',
-                                  style: TextStyle(
+                        style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
                                     color: _text.isNotEmpty ? Colors.blue.shade700 : Colors.grey.shade600,
@@ -2440,7 +2458,7 @@ class _MyAppState extends State<MyApp> {
                           color: _voiceStatusColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
-                            color: _voiceStatusColor,
+                          color: _voiceStatusColor,
                             width: 1,
                           ),
                         ),
@@ -2457,7 +2475,7 @@ class _MyAppState extends State<MyApp> {
                               _voiceStatus.isEmpty ? '대기중' : _voiceStatus,
                               style: TextStyle(
                                 color: _voiceStatusColor,
-                                fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.bold,
                                 fontSize: 16,
                               ),
                             ),
@@ -2513,7 +2531,7 @@ class _MyAppState extends State<MyApp> {
                             ),
                             const SizedBox(width: 12),
                             ElevatedButton.icon(
-                              onPressed: () => _showNumberSelectionModal(context),
+                              onPressed: () => _showNumberSelection(context),
                               icon: Icon(Icons.touch_app, color: Colors.white),
                               label: Text('숫자 선택하기'),
                               style: ElevatedButton.styleFrom(
