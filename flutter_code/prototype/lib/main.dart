@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart'; // 삭제
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart'; // 에뮬레이터 호환성을 위한 추가
+import 'package:flutter/services.dart'; // 파일 상단에 추가
 
 // 서버 연결 설정
 class ServerConfig {
@@ -386,7 +387,7 @@ class UrlUtils {
   // 서비스명으로부터 URL 자동 생성
   static String generateUrlFromService(String serviceName) {
     final name = serviceName.toLowerCase().trim();
-    
+
     // 일반적인 패턴 매칭
     final urlPatterns = {
       'google': 'https://www.google.com',
@@ -644,23 +645,23 @@ class UrlUtils {
       'pagekite.me': 'https://pagekite.me',
       'localhost.run': 'https://localhost.run',
     };
-    
+
     // 정확한 매칭 시도
     if (urlPatterns.containsKey(name)) {
       return urlPatterns[name]!;
     }
-    
+
     // 부분 매칭 시도
     for (final entry in urlPatterns.entries) {
       if (entry.key.contains(name) || name.contains(entry.key)) {
         return entry.value;
       }
     }
-    
+
     // 기본 패턴으로 URL 생성
     return 'https://www.$name.com';
   }
-  
+
   // URL 유효성 검사
   static bool isValidUrl(String url) {
     try {
@@ -670,7 +671,7 @@ class UrlUtils {
       return false;
     }
   }
-  
+
   // URL 정규화
   static String normalizeUrl(String url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -772,6 +773,8 @@ class ScreenTouchManager {
     String gesture = 'tap',
   }) async {
     try {
+      await logDebug('가상 터치 실행: ($x, $y) - $gesture');
+      print('가상 터치 실행: ($x, $y) - $gesture');
       // 배터리 최적화 체크
       if (BatteryOptimizer.shouldReduceActivity()) {
         print('배터리 최적화 모드: 터치 동작 제한됨');
@@ -792,6 +795,7 @@ class ScreenTouchManager {
 
       return true;
     } catch (e) {
+      await logDebug('가상 터치 실패: $e');
       print('가상 터치 실패: $e');
       return false;
     }
@@ -801,6 +805,8 @@ class ScreenTouchManager {
     String elementName,
     Function(double, double, String)? onTouchCallback,
   ) async {
+    await logDebug('findAndTapElement 호출: $elementName');
+    print('findAndTapElement 호출: $elementName');
     try {
       // 요소 찾기 및 터치 시뮬레이션
       switch (elementName.toLowerCase()) {
@@ -828,7 +834,7 @@ class ScreenTouchManager {
             final y = 400.0 + (index ~/ 4) * 80.0;
             final success = await performVirtualTouch(x, y);
             if (success && onTouchCallback != null) {
-              onTouchCallback(x, y, '${number}번');
+              onTouchCallback(x, y, '$number번');
             }
             return success;
           }
@@ -945,7 +951,7 @@ class BackgroundIndicator extends StatelessWidget {
             const Icon(Icons.record_voice_over, color: Colors.white, size: 16),
             const SizedBox(width: 6),
             Text(
-              '음성 비서 실행 중',
+              '실행 중',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -1032,7 +1038,7 @@ class SettingsPage extends StatelessWidget {
               '테스트 기능',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
-            leading: const Icon(Icons.science),
+            leading: Icon(Icons.science),
           ),
           ListTile(
             title: const Text('화면 인식 테스트'),
@@ -1319,7 +1325,7 @@ class _MyAppState extends State<MyApp> {
   bool _isListening = false;
   bool isWaiting = false;
   String _screenAnalysis = '';
-  List<Map<String, dynamic>> _touchIndicators = [];
+  final List<Map<String, dynamic>> _touchIndicators = [];
   bool _showTouchIndicators = false;
   bool confirmationEnabled = true;
   final player = AudioPlayer();
@@ -1339,7 +1345,7 @@ class _MyAppState extends State<MyApp> {
 
   // 실제 음성 인식 객체
   // stt.SpeechToText? _speechToText; // 삭제
-  bool _speechEnabled = false;
+  final bool _speechEnabled = false;
   bool _showNumberSelectionUI = false; // 숫자 선택 UI 표시 여부
 
   @override
@@ -1372,7 +1378,9 @@ class _MyAppState extends State<MyApp> {
       toFile: _recordedFilePath,
       codec: Codec.pcm16WAV,
     );
-    setState(() { _isRecording = true; });
+    setState(() {
+      _isRecording = true;
+    });
     _recorderSubscription = _recorder!.onProgress!.listen((event) {
       if (event.decibels != null && event.decibels! > -40) {
         // 음성 입력 감지됨
@@ -1402,7 +1410,9 @@ class _MyAppState extends State<MyApp> {
                 _voiceStatus = '무음 또는 소음만 감지됨';
                 _voiceStatusColor = Colors.red;
               });
-              print('[INFO] 무음/소음만 감지됨, 분석/터치 생략. 파일 크기: ${await file.length()}B');
+              print(
+                '[INFO] 무음/소음만 감지됨, 분석/터치 생략. 파일 크기: ${await file.length()}B',
+              );
             } else {
               setState(() {
                 _voiceStatus = '작동중';
@@ -1459,7 +1469,7 @@ class _MyAppState extends State<MyApp> {
     if (!status.isGranted) {
       status = await Permission.microphone.request();
       if (!status.isGranted) {
-    setState(() {
+        setState(() {
           _voiceStatus = '마이크 권한 필요';
           _voiceStatusColor = Colors.red;
         });
@@ -1484,39 +1494,42 @@ class _MyAppState extends State<MyApp> {
       final directory = await getTemporaryDirectory();
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final filePath = '${directory.path}/recorded_$timestamp.wav';
-      
+
       // 녹음기 초기화 (에뮬레이터 최적화)
       _recorder = FlutterSoundRecorder();
       await _recorder!.openRecorder();
-      
+
       // 에뮬레이터에서 더 나은 음성 품질을 위한 설정
-      await _recorder!.setSubscriptionDuration(const Duration(milliseconds: 100));
-      
+      await _recorder!.setSubscriptionDuration(
+        const Duration(milliseconds: 100),
+      );
+
       // 녹음 시작
-    await _recorder!.startRecorder(
+      await _recorder!.startRecorder(
         toFile: filePath,
-      codec: Codec.pcm16WAV,
+        codec: Codec.pcm16WAV,
         sampleRate: 44100, // 에뮬레이터에서 더 나은 품질
-        numChannels: 1,    // 모노 채널
-    );
+        numChannels: 1, // 모노 채널
+      );
 
       // 실시간 볼륨 감지 (에뮬레이터 최적화)
-    _recorderSubscription = _recorder!.onProgress!.listen((event) {
+      _recorderSubscription = _recorder!.onProgress!.listen((event) {
         if (event.decibels != null) {
           // 음성 입력 감지 로그 추가
           print('🎤 볼륨 감지: ${event.decibels}dB');
-          
+
           // 에뮬레이터에서 더 민감한 감지
-          if (event.decibels! > -50) { // 임계값 조정
+          if (event.decibels! > -50) {
+            // 임계값 조정
             print('🔊 음성 입력 감지됨! 볼륨: ${event.decibels}dB');
-        _lastVoiceInputTime = DateTime.now();
-        _silenceTimer?.cancel();
-            
+            _lastVoiceInputTime = DateTime.now();
+            _silenceTimer?.cancel();
+
             setState(() {
               _voiceStatus = '음성 입력 감지됨';
               _voiceStatusColor = Colors.green;
             });
-      } else {
+          } else {
             print('🔇 무음 감지됨. 볼륨: ${event.decibels}dB');
             // 무음 감지 (1초로 단축)
             _silenceTimer ??= Timer(const Duration(seconds: 1), () async {
@@ -1534,7 +1547,6 @@ class _MyAppState extends State<MyApp> {
         print('⏰ 최대 5초 녹음 시간 초과');
         await _stopRecordingAndProcess();
       });
-
     } catch (e) {
       print('녹음 시작 오류: $e');
       setState(() {
@@ -1550,58 +1562,59 @@ class _MyAppState extends State<MyApp> {
     _maxRecordingTimer?.cancel();
     _silenceTimer?.cancel();
     _recorderSubscription?.cancel();
-    
+
     try {
       final recordedFile = await _recorder!.stopRecorder();
       print('✅ 녹음 파일 생성: $recordedFile');
-      
-    setState(() {
+
+      setState(() {
         _isListening = false;
-      _isRecording = false;
+        _isRecording = false;
         _voiceStatus = '녹음 완료';
         _voiceStatusColor = Colors.blue;
-    });
+      });
 
-    await Future.delayed(Duration(seconds: 1));
-      
+      await Future.delayed(Duration(seconds: 1));
+
       if (recordedFile != null) {
         print('📁 녹음 파일 크기 확인 중...');
         final file = File(recordedFile);
         final fileSize = await file.length();
-        print('📊 파일 크기: ${fileSize} bytes');
-        
-        if (fileSize > 512) { // 512 bytes 이상으로 낮춤
+        print('📊 파일 크기: $fileSize bytes');
+
+        if (fileSize > 512) {
+          // 512 bytes 이상으로 낮춤
           print('✅ 파일 크기 충분함. 서버 전송 시작');
-        setState(() {
+          setState(() {
             _voiceStatus = '음성 분석중';
             _voiceStatusColor = Colors.orange;
           });
-          
+
           final transcript = await sendAudioToServer(recordedFile);
           print('🎯 음성 인식 결과: $transcript');
-          
+
           if (transcript != null && transcript.isNotEmpty) {
-      setState(() {
+            setState(() {
               _text = transcript;
               _confidence = 0.8; // 임시 신뢰도
               _voiceStatus = '음성인식 완료';
-        _voiceStatusColor = Colors.green;
-      });
-            
+              _voiceStatusColor = Colors.green;
+            });
+
             // 음성 인식 완료 후 AI 분석을 순차적으로 진행
             await _displayAIAnalysis(transcript);
           } else {
             print('❌ 음성 인식 실패');
-      setState(() {
+            setState(() {
               _voiceStatus = '음성인식 실패';
               _voiceStatusColor = Colors.red;
             });
           }
         } else {
-          print('❌ 파일 크기가 너무 작음: ${fileSize} bytes');
+          print('❌ 파일 크기가 너무 작음: $fileSize bytes');
           setState(() {
             _voiceStatus = '음성 입력 부족';
-          _voiceStatusColor = Colors.red;
+            _voiceStatusColor = Colors.red;
           });
         }
       } else {
@@ -1668,27 +1681,33 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _addTouchIndicator(double x, double y, String label) {
+    logDebug('터치 이펙트 추가: ($x, $y) $label');
+    print('터치 이펙트 추가: ($x, $y) $label');
     setState(() {
       _touchIndicators.add({
         'x': x,
         'y': y,
         'label': label,
         'timestamp': DateTime.now(),
+        'visible': true,
       });
-      _showTouchIndicators = true;
     });
-
-    // 3초 후 터치 표시 제거
-    Future.delayed(const Duration(seconds: 3), () {
+    // 0.8초 후 투명도/스케일 다운
+    Future.delayed(const Duration(milliseconds: 800), () {
       if (mounted) {
         setState(() {
-          _touchIndicators.removeWhere(
-            (indicator) =>
-                indicator['timestamp'] == _touchIndicators.last['timestamp'],
+          final idx = _touchIndicators.indexWhere(
+            (e) => e['timestamp'] == _touchIndicators.last['timestamp'],
           );
-          if (_touchIndicators.isEmpty) {
-            _showTouchIndicators = false;
-          }
+          if (idx != -1) _touchIndicators[idx]['visible'] = false;
+        });
+      }
+    });
+    // 1.2초 후 완전 제거
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() {
+          _touchIndicators.removeWhere((e) => e['visible'] == false);
         });
       }
     });
@@ -1841,6 +1860,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _handleAction(Map<String, dynamic> action) async {
     try {
+      await logDebug('액션 처리 시작: $action');
       final actionType = action['type'] as String?;
       final target = action['target'] as String?;
 
@@ -1912,7 +1932,9 @@ class _MyAppState extends State<MyApp> {
         }),
         headers: {'Content-Type': 'application/json'},
       );
+      await logDebug('액션 처리 완료: $actionType $target');
     } catch (e) {
+      await logDebug('액션 처리 실패: $e');
       print('액션 처리 실패: $e');
     }
   }
@@ -1934,21 +1956,24 @@ class _MyAppState extends State<MyApp> {
 
   /// (1) 음성 파일을 서버로 전송해 텍스트로 변환
   Future<String?> sendAudioToServer(String filePath) async {
-    File audioFile = File(filePath);
-    List<int> audioBytes = await audioFile.readAsBytes();
-    String audioBase64 = base64Encode(audioBytes);
-
-    final response = await http.post(
-      Uri.parse('${ServerConfig.baseUrl}/speech-to-text'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'audio': audioBase64}),
+    await logDebug('음성 파일 서버 전송 시작: $filePath');
+    print('[음성분석시작] ' + DateTime.now().toIso8601String());
+    final uri = Uri.parse('${ServerConfig.baseUrl}/speech-to-text');
+    final request = http.MultipartRequest('POST', uri)
+      ..files.add(await http.MultipartFile.fromPath('audio', filePath));
+    final streamedResponse = await request.send().timeout(
+      const Duration(seconds: 30),
     );
-
+    final response = await http.Response.fromStream(streamedResponse);
+    await logDebug('서버 응답 수신: ${response.statusCode} ${response.body}');
+    print('[음성분석끝] ' + DateTime.now().toIso8601String());
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
+      await logDebug('음성 인식 결과: ${data['transcript']}');
       return data['transcript'];
     } else {
-      print('서버 오류: \n${response.body}');
+      await logDebug('서버 오류: ${response.body}');
+      print('서버 오류: \n' + response.body);
       return null;
     }
   }
@@ -2031,35 +2056,38 @@ class _MyAppState extends State<MyApp> {
   // } // 삭제
 
   // 음성 명령을 AI로 분석하는 함수
+  bool isAnalyzing = false;
   Future<void> _analyzeVoiceCommand(String command) async {
+    if (isAnalyzing) return;
+    isAnalyzing = true;
+    await logDebug('AI 분석 시작: $command');
+    print('[AI분석시작] ' + DateTime.now().toIso8601String());
     setState(() {
       isWaiting = true;
       _voiceStatus = 'AI 분석중';
       _voiceStatusColor = Colors.orange;
     });
-
     try {
-      // 화면 분석
       final screenData = await ScreenTouchManager.captureScreen();
       final analysis = await ScreenTouchManager.analyzeScreen(screenData);
-
       setState(() {
         _screenAnalysis = analysis;
       });
-
-      // AI 서버에 명령 전송
-      final response = await http.post(
-        Uri.parse(ServerConfig.llmUrl),
-        body: {
-          'text': command,
-          'confidence': _confidence.toString(),
-          'screen_analysis': _screenAnalysis,
-        },
-      );
-
+      final response = await http
+          .post(
+            Uri.parse(ServerConfig.llmUrl),
+            body: {
+              'text': command,
+              'confidence': _confidence.toString(),
+              'screen_analysis': _screenAnalysis,
+            },
+          )
+          .timeout(const Duration(seconds: 30));
+      await logDebug('AI 서버 응답: ${response.statusCode} ${response.body}');
+      print('[AI분석끝] ' + DateTime.now().toIso8601String());
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        
+        await logDebug('AI 분석 결과: ${data['response_text']}');
         setState(() {
           _response = data['response_text'] ?? 'AI 응답을 받았습니다.';
           conversationHistory.add(data);
@@ -2067,19 +2095,14 @@ class _MyAppState extends State<MyApp> {
           _voiceStatus = 'AI 분석 완료';
           _voiceStatusColor = Colors.green;
         });
-
-        // TTS로 응답 재생
         await _playTTS(_response);
-
-        // 명령어 처리 (가상 터치 등)
         if (data['action'] != null) {
+          await logDebug('액션 처리: ${data['action']}');
           await _handleAction(data['action']);
         }
-
-        // 화면 캡처 자동 삭제
         await ScreenTouchManager.cleanupScreenshot();
-
       } else {
+        await logDebug('AI 분석 실패: ${response.body}');
         setState(() {
           _response = 'AI 서버 연결 오류';
           isWaiting = false;
@@ -2088,12 +2111,15 @@ class _MyAppState extends State<MyApp> {
         });
       }
     } catch (e) {
+      await logDebug('AI 분석 중 오류: $e');
       setState(() {
         _response = 'AI 분석 중 오류: $e';
         isWaiting = false;
         _voiceStatus = 'AI 분석 오류';
         _voiceStatusColor = Colors.red;
       });
+    } finally {
+      isAnalyzing = false;
     }
   }
 
@@ -2106,14 +2132,14 @@ class _MyAppState extends State<MyApp> {
 
     // AI 분석 시작 (대기 시간 단축)
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     await _analyzeVoiceCommand(command);
   }
 
   // 테스트용 텍스트 입력 다이얼로그 (에뮬레이터용)
   void _showTestInputDialog(BuildContext context) {
     final TextEditingController controller = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -2156,14 +2182,14 @@ class _MyAppState extends State<MyApp> {
   // 숫자 버튼 선택 시 처리
   void _selectNumberButton(int number) {
     print('🔢 숫자 버튼 선택: $number');
-    
+
     setState(() {
       _text = '$number번을 클릭해줘';
       _confidence = 0.9; // 높은 신뢰도
       _voiceStatus = '숫자 버튼 선택됨';
       _voiceStatusColor = Colors.green;
     });
-    
+
     // AI 분석 시작
     _displayAIAnalysis('$number번을 클릭해줘');
   }
@@ -2188,9 +2214,48 @@ class _MyAppState extends State<MyApp> {
     print('build 함수 호출');
     return MaterialApp(
       home: Scaffold(
+        backgroundColor: const Color(0xFFFFF6FA),
         appBar: AppBar(
-          title: const Text('LLM 음성 비서 프로토타입'),
+          title: const Text('음성인식 AI'),
           actions: [
+            Builder(
+              builder: (context) => IconButton(
+                icon: Icon(Icons.bug_report),
+                onPressed: () async {
+                  final log = await readDebugLog();
+                  if (context.mounted) {
+                    logDebug('디버그 로그 다이얼로그 호출');
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: Text('디버그 로그'),
+                        content: SingleChildScrollView(
+                          child: SelectableText(log),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(text: log));
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('복사되었습니다!')),
+                              );
+                            },
+                            child: Text('복사'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: Text('닫기'),
+                          ),
+                        ],
+                      ),
+                    );
+                  } else {
+                    logDebug('showDialog 호출 시 context.mounted == false');
+                  }
+                },
+              ),
+            ),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: () async {
@@ -2214,6 +2279,7 @@ class _MyAppState extends State<MyApp> {
         ),
         floatingActionButton: Stack(
           children: [
+            // 기존 마이크/녹음 FAB (오른쪽 아래)
             Positioned(
               right: 0,
               bottom: 0,
@@ -2223,121 +2289,27 @@ class _MyAppState extends State<MyApp> {
                 child: Icon(_isListening ? Icons.stop : Icons.mic),
               ),
             ),
-            if (_isListening)
-              const Positioned(
-                right: 70,
-                bottom: 10,
-                child: Icon(Icons.hearing, color: Colors.green, size: 40),
-              ),
-            // 테스트용 텍스트 입력 버튼 (에뮬레이터용)
+            // 테스트용 가상터치 FAB (왼쪽 아래)
             Positioned(
-              right: 0,
-              bottom: 80,
-              child: FloatingActionButton.small(
-                onPressed: () => _showTestInputDialog(context),
-                backgroundColor: Colors.orange,
-                child: const Icon(Icons.edit),
+              left: 0,
+              bottom: 0,
+              child: FloatingActionButton(
+                heroTag: 'testTouch',
+                backgroundColor: Colors.purple,
+                onPressed: () {
+                  final size = MediaQuery.of(context).size;
+                  _addTouchIndicator(size.width / 2, size.height / 2, '테스트');
+                },
+                child: Icon(Icons.touch_app),
+                tooltip: '가상터치 테스트',
               ),
-              ),
+            ),
           ],
         ),
         body: Stack(
           children: [
-            // 숫자 선택 UI (화면에 직접 표시)
-            if (_showNumberSelectionUI)
-              Positioned.fill(
-                child: Container(
-                  color: Colors.black54,
-                  child: Center(
-                    child: Container(
-                      width: 300,
-                      padding: const EdgeInsets.all(24.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 10,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.touch_app, color: Colors.red.shade600),
-                              const SizedBox(width: 8),
-                              Text(
-                                '숫자 선택',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.red.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '원하는 숫자를 선택해주세요:',
-                            style: TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 20),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: List.generate(5, (index) {
-                              return GestureDetector(
-                                onTap: () {
-                                  print('🔢 숫자 ${index + 1} 선택됨');
-                                  _hideNumberSelection();
-                                  _selectNumberButton(index + 1);
-                                },
-                                child: Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade100,
-                                    borderRadius: BorderRadius.circular(30),
-                                    border: Border.all(
-                                      color: Colors.red.shade300,
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '${index + 1}',
-                                      style: TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.red.shade700,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                          const SizedBox(height: 20),
-                          TextButton(
-                            onPressed: () {
-                              print('🔢 숫자 선택 취소됨');
-                              _hideNumberSelection();
-                            },
-                            child: Text(
-                              '취소',
-                              style: TextStyle(color: Colors.grey.shade600),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (isWaiting) const LinearProgressIndicator(),
                 Padding(
@@ -2345,15 +2317,15 @@ class _MyAppState extends State<MyApp> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 음성 인식 결과를 더 크고 명확하게 표시
+                      // 음성 인식 결과 카드
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16.0),
                         decoration: BoxDecoration(
-                          color: _text.isNotEmpty ? Colors.blue.shade50 : Colors.grey.shade100,
+                          color: Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: _text.isNotEmpty ? Colors.blue.shade200 : Colors.grey.shade300,
+                            color: Colors.grey.shade300,
                             width: 2,
                           ),
                         ),
@@ -2364,16 +2336,20 @@ class _MyAppState extends State<MyApp> {
                               children: [
                                 Icon(
                                   Icons.mic,
-                                  color: _text.isNotEmpty ? Colors.blue : Colors.grey,
+                                  color: _text.isNotEmpty
+                                      ? Colors.blue
+                                      : Colors.grey,
                                   size: 24,
                                 ),
                                 const SizedBox(width: 8),
-                      Text(
+                                Text(
                                   '음성 인식 결과',
-                        style: TextStyle(
+                                  style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                    color: _text.isNotEmpty ? Colors.blue.shade700 : Colors.grey.shade600,
+                                    color: _text.isNotEmpty
+                                        ? Colors.blue.shade700
+                                        : Colors.grey.shade600,
                                   ),
                                 ),
                               ],
@@ -2383,15 +2359,19 @@ class _MyAppState extends State<MyApp> {
                               _text.isEmpty ? '음성을 입력해주세요...' : _text,
                               style: TextStyle(
                                 fontSize: _text.isNotEmpty ? 20 : 16,
-                                fontWeight: _text.isNotEmpty ? FontWeight.w600 : FontWeight.normal,
-                                color: _text.isNotEmpty ? Colors.black87 : Colors.grey.shade600,
+                                fontWeight: _text.isNotEmpty
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                color: _text.isNotEmpty
+                                    ? Colors.black87
+                                    : Colors.grey.shade600,
                                 height: 1.4,
                               ),
                             ),
                             if (_text.isNotEmpty) ...[
                               const SizedBox(height: 8),
                               Text(
-                                '신뢰도: ${(_confidence * 100).toStringAsFixed(1)}%',
+                                '신뢰도: \\${(_confidence * 100).toStringAsFixed(1)}%',
                                 style: TextStyle(
                                   fontSize: 14,
                                   color: Colors.grey.shade600,
@@ -2402,306 +2382,317 @@ class _MyAppState extends State<MyApp> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      
-
-                      
-                      const SizedBox(height: 16),
-                      
-                      // AI 응답을 별도로 표시
-                      if (_response.isNotEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(16.0),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.green.shade200,
-                              width: 2,
+                      // 음성 입력 부족/숫자 선택하기 버튼 Row (불필요한 영역 없이 바로)
+                      if (_voiceStatus == '음성 입력 부족')
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(
+                                Icons.warning,
+                                color: Colors.red,
+                              ),
+                              label: const Text(
+                                '음성 입력 부족',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Colors.red),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              onPressed: null,
+                            ),
+                            const SizedBox(width: 16),
+                            ElevatedButton.icon(
+                              icon: const Icon(
+                                Icons.touch_app,
+                                color: Colors.white,
+                              ),
+                              label: const Text('숫자 선택하기'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                              ),
+                              onPressed: () => _showNumberSelection(context),
+                            ),
+                          ],
+                        ),
+                    ],
+                  ),
+                ),
+                // 바로 그리드가 Expanded로 오도록
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(16.0),
+                    child: GridView.builder(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            crossAxisSpacing: 8.0,
+                            mainAxisSpacing: 8.0,
+                            childAspectRatio: 1.0,
+                          ),
+                      itemCount: gridItems.length,
+                      itemBuilder: (context, index) {
+                        final item = gridItems[index];
+                        return GestureDetector(
+                          onTap: () async {
+                            print(
+                              '그리드 아이템 클릭: \\${item.number} - \\${item.label}',
+                            );
+                            print('URL: \\${item.url}');
+                            try {
+                              final uri = Uri.parse(item.url);
+                              print('URI 파싱 성공: \\${uri}');
+                              if (await canLaunchUrl(uri)) {
+                                print('canLaunchUrl: true');
+                                await launchUrl(
+                                  uri,
+                                  mode: LaunchMode.inAppWebView,
+                                );
+                                print('URL 실행 완료: \\${uri}');
+                              } else {
+                                print('canLaunchUrl: false');
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        '\\${item.label} 링크를 열 수 없습니다.',
+                                      ),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                }
+                              }
+                            } catch (e) {
+                              print('URL 실행 실패: \\${e}');
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      '\\${item.label} 링크 실행 중 오류가 발생했습니다.',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: item.color.withOpacity(0.8),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.2),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(item.icon, color: Colors.white, size: 24),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${item.number}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                Text(
+                                  item.label,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.smart_toy, color: Colors.green.shade600),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'AI 응답',
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green.shade700,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // 숫자 선택 UI (항상 맨 위에 보이도록 Stack의 마지막에 위치)
+            if (_showNumberSelectionUI)
+              Positioned.fill(
+                child: Material(
+                  color: Colors.black54,
+                  child: SafeArea(
+                    child: Center(
+                      child: Container(
+                        constraints: const BoxConstraints(
+                          maxWidth: 350,
+                          maxHeight: 400,
+                        ),
+                        margin: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(24.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 10,
+                              offset: const Offset(0, 5),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.touch_app,
+                                  color: Colors.red.shade600,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '숫자 선택',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '원하는 숫자를 선택해주세요:',
+                              style: TextStyle(fontSize: 16),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 20),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: List.generate(5, (index) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    _hideNumberSelection();
+                                    _selectNumberButton(index + 1);
+                                  },
+                                  child: Container(
+                                    width: 60,
+                                    height: 60,
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade100,
+                                      borderRadius: BorderRadius.circular(30),
+                                      border: Border.all(
+                                        color: Colors.red.shade300,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red.shade700,
+                                        ),
+                                      ),
                                     ),
                                   ),
-                                ],
+                                );
+                              }),
+                            ),
+                            const SizedBox(height: 20),
+                            TextButton(
+                              onPressed: () {
+                                _hideNumberSelection();
+                              },
+                              child: Text(
+                                '취소',
+                                style: TextStyle(color: Colors.grey.shade600),
                               ),
-                              const SizedBox(height: 8),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            // 가상 터치 표시 오버레이
+            if (_touchIndicators.isNotEmpty)
+              ...(_touchIndicators.map((indicator) {
+                logDebug(
+                  '오버레이 표시: ${indicator['x']}, ${indicator['y']}, ${indicator['label']}, visible=${indicator['visible']}',
+                );
+                print(
+                  '오버레이 표시: ${indicator['x']}, ${indicator['y']}, ${indicator['label']}, visible=${indicator['visible']}',
+                );
+                return AnimatedPositioned(
+                  duration: const Duration(milliseconds: 200),
+                  left: indicator['x'] - 40,
+                  top: indicator['y'] - 40,
+                  child: AnimatedOpacity(
+                    opacity: indicator['visible'] ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 400),
+                    child: AnimatedScale(
+                      scale: indicator['visible'] ? 1.0 : 1.5,
+                      duration: const Duration(milliseconds: 400),
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.touch_app,
+                                color: Colors.white,
+                                size: 32,
+                              ),
                               Text(
-                                _response,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  color: Colors.green.shade800,
+                                indicator['label'] ?? '터치!',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  shadows: [
+                                    Shadow(color: Colors.black, blurRadius: 4),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // 상태 표시
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: _voiceStatusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                          color: _voiceStatusColor,
-                            width: 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _isListening ? Icons.mic : Icons.info,
-                              color: _voiceStatusColor,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _voiceStatus.isEmpty ? '대기중' : _voiceStatus,
-                              style: TextStyle(
-                                color: _voiceStatusColor,
-                          fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      if (_screenAnalysis.isNotEmpty) ...[
-                        const Text(
-                          '화면 분석:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          _screenAnalysis,
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                      
-
-                      // 음성 입력 부족 시 숫자 선택 버튼만 표시
-                      if (_voiceStatus == '음성 입력 부족')
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Container(
-                                padding: const EdgeInsets.all(16.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.red.shade50,
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.red.shade200,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.warning, color: Colors.red.shade600),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '음성 입력 부족',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.red.shade700,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            ElevatedButton.icon(
-                              onPressed: () => _showNumberSelection(context),
-                              icon: Icon(Icons.touch_app, color: Colors.white),
-                              label: Text('숫자 선택하기'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red.shade600,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      // 대화 기록
-                      Container(
-                        height: 150,
-                        child: ListView(
-                          children: conversationHistory.reversed
-                              .take(3)
-                              .map(
-                                (e) => ListTile(
-                                  title: Text(e['response_text'] ?? ''),
-                                  subtitle: Text(e.toString()),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                      ),
-                      const Divider(),
-                      // 4x3 그리드 영역
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(16.0),
-                          child: GridView.builder(
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 4,
-                                  crossAxisSpacing: 8.0,
-                                  mainAxisSpacing: 8.0,
-                                  childAspectRatio: 1.0,
-                                ),
-                            itemCount: gridItems.length,
-                            itemBuilder: (context, index) {
-                              final item = gridItems[index];
-                              return GestureDetector(
-                                onTap: () async {
-                                  print('그리드 아이템 클릭: ${item.number} - ${item.label}');
-                                  print('URL: ${item.url}');
-                                  
-                                  try {
-                                    final uri = Uri.parse(item.url);
-                                    print('URI 파싱 성공: $uri');
-                                    
-                                    // URL 실행 가능 여부 확인
-                                    if (await canLaunchUrl(uri)) {
-                                      print('URL 실행 시작: $uri');
-                                      await launchUrl(
-                                        uri,
-                                        mode: LaunchMode.externalApplication,
-                                      );
-                                      print('URL 실행 완료: $uri');
-                                    } else {
-                                      print('URL 실행 불가능: $uri');
-                                      // 사용자에게 알림
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('${item.label} 링크를 열 수 없습니다.'),
-                                          backgroundColor: Colors.orange,
-                                        ),
-                                      );
-                                    }
-                                  } catch (e) {
-                                    print('URL 실행 실패: $e');
-                                    // 사용자에게 오류 알림
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('${item.label} 링크 실행 중 오류가 발생했습니다.'),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    color: item.color.withOpacity(0.8),
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.2),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        item.icon,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '${item.number}',
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      Text(
-                                        item.label,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            // 가상 터치 표시 오버레이
-            if (_showTouchIndicators)
-              ...(_touchIndicators
-                  .map(
-                    (indicator) => Positioned(
-                      left: indicator['x'] - 25,
-                      top: indicator['y'] - 25,
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.7),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                        ),
-                        child: Center(
-                          child: Text(
-                            indicator['label'],
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
                       ),
                     ),
-                  )
-                  .toList()),
+                  ),
+                );
+              })),
             // 백그라운드 실행 표시
             const BackgroundIndicator(),
             // 마이크 ON 배지
@@ -2711,7 +2702,10 @@ class _MyAppState extends State<MyApp> {
                 left: 16,
                 child: AnimatedContainer(
                   duration: Duration(milliseconds: 300),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: _voiceStatus == '음성인식중'
                         ? Colors.redAccent
@@ -2764,3 +2758,40 @@ Future<void> main() async {
 
 // 예시: dotenv에서 API 키 읽기
 // String apiKey = dotenv.env['GOOGLE_SPEECH_API_KEY'] ?? '';
+
+Future<void> logDebug(String message) async {
+  final now = DateTime.now().toIso8601String();
+  final logLine = '[$now] $message\n';
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final logFile = File('${dir.path}/debug.log');
+    await logFile.writeAsString(logLine, mode: FileMode.append);
+  } catch (e) {
+    print('로그 기록 실패: $e');
+  }
+}
+
+// 주요 단계마다 logDebug 호출 예시:
+// await logDebug('음성 녹음 시작');
+// await logDebug('음성 파일 서버 전송 시작: $filePath');
+// await logDebug('서버 응답 수신: $response');
+// await logDebug('AI 분석 시작: $command');
+// await logDebug('AI 분석 완료: $result');
+// await logDebug('액션 처리: $action');
+
+// sendAudioToServer, _analyzeVoiceCommand, _handleAction 등 주요 함수 내에 logDebug 호출 추가
+
+// 1. 로그 읽기 함수 추가
+Future<String> readDebugLog() async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final logFile = File('${dir.path}/debug.log');
+    if (await logFile.exists()) {
+      return await logFile.readAsString();
+    } else {
+      return '로그 파일이 없습니다.';
+    }
+  } catch (e) {
+    return '로그 읽기 실패: $e';
+  }
+}
