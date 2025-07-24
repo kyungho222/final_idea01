@@ -4,5 +4,7 @@
     android:accessibilityFeedbackType="feedbackGeneric"
     android:notificationTimeout="100"
     android:canPerformGestures="true"
+    android:canRetrieveWindowContent="true"
+    android:settingsActivity="com.example.prototype.MainActivity"
     android:description="@string/accessibility_service_description"
 /> 

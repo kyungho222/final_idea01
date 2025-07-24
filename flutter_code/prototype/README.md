@@ -1,29 +1,46 @@
-# LLM 음성 비서 프로토타입
+# 📱 LLM 음성 비서 프로토타입
 
-## 📱 프로젝트 개요
+## 🎯 프로젝트 개요
 
-Flutter 기반의 음성 인식 및 AI 분석을 통한 스마트 비서 애플리케이션입니다. 사용자의 음성 명령을 인식하고 AI가 분석하여 적절한 액션을 수행합니다.
+Android 접근성 서비스를 활용한 스마트폰 화면 요소 음성 인식 및 가상 터치 시스템입니다. 사용자의 음성 명령을 통해 화면의 UI 요소를 자동으로 클릭하고 조작할 수 있습니다.
+
+### 🌟 핵심 기능
+- **🎤 음성 인식**: 실시간 음성 명령 인식
+- **👁️ 화면 분석**: Android 접근성 서비스로 UI 요소 감지
+- **🎯 가상 터치**: 음성 명령에 따른 자동 터치 실행
+- **🌐 웹 브라우징**: 크롬 브라우저 내 요소 자동 클릭
+- **📱 앱 제어**: 다양한 앱의 UI 요소 자동 조작
+- **✨ 터치 임팩트**: 시각적 피드백이 있는 터치 애니메이션
 
 ## 🏗️ 아키텍처
 
 ### **프론트엔드 (Flutter)**
 - **음성 녹음**: `flutter_sound` 패키지 사용
 - **UI/UX**: Material Design 기반 반응형 인터페이스
-- **상태 관리**: Flutter StatefulWidget
+- **상태 관리**: Provider 패턴 기반 상태 관리
 - **권한 관리**: `permission_handler` 패키지
+- **접근성 서비스**: Android AccessibilityService 연동
+- **터치 피드백**: TouchIndicator 애니메이션 시스템
 
-### **백엔드 (FastAPI)**
+### **백엔드 (Python Flask)**
 - **음성 인식**: OpenAI Whisper API
 - **자연어 처리**: OpenAI GPT 모델
 - **TTS**: `pyttsx3` (서버 사이드)
 - **오디오 처리**: `pydub`, `librosa`
 
+### **Android 네이티브 (Kotlin)**
+- **접근성 서비스**: `MyAccessibilityService.kt`
+- **화면 요소 감지**: AccessibilityEvent 처리
+- **가상 터치**: GestureDescription API
+- **권한 관리**: 접근성 서비스 권한
+
 ### **핵심 기능**
 - **실시간 음성 녹음**: 볼륨 감지 기반 자동 종료
-- **AI 명령 분석**: 자연어를 구조화된 액션으로 변환
-- **가상 터치**: 화면 요소 자동 클릭
-- **URL 실행**: 외부 앱/웹사이트 자동 실행
-- **TTS 피드백**: AI 응답 음성 재생
+- **화면 요소 분석**: 접근성 서비스로 UI 요소 실시간 감지
+- **가상 터치**: 음성 명령에 따른 정확한 터치 실행
+- **웹 브라우징**: 크롬 브라우저 내 요소 자동 클릭
+- **터치 피드백**: 애니메이션 효과가 있는 터치 임팩트
+- **서버 연결 상태**: 실시간 백엔드 연결 상태 모니터링
 
 ## 🚀 설치 및 실행
 
@@ -46,21 +63,18 @@ flutter pub get
 
 ### **3. 백엔드 서버 설정**
 ```bash
-# 백엔드 디렉토리로 이동
-cd backend
-
 # Python 가상환경 생성 (선택사항)
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 
 # 의존성 설치
-pip install -r requirements.txt
+pip install flask openai pydub librosa pyttsx3
 
 # 환경 변수 설정
 export OPENAI_API_KEY="your-openai-api-key"
 
 # 서버 실행
-python main.py
+python test_server.py
 ```
 
 ### **4. Flutter 앱 실행**
@@ -76,23 +90,26 @@ flutter run
 
 ### **기본 사용 흐름**
 
-1. **음성 녹음 시작**
+1. **접근성 서비스 활성화**
+   - 설정 → 접근성 → 프로토타입 앱 활성화
+   - 마이크 권한 허용
+
+2. **음성 녹음 시작**
    - 마이크 버튼을 탭하여 녹음 시작
    - 음성 입력 시 실시간 볼륨 감지
-   - 무음 2초 또는 최대 5초 후 자동 종료
+   - 무음 2초 또는 최대 10초 후 자동 종료
 
-2. **음성 인식 결과 표시**
+3. **화면 요소 분석**
+   - 접근성 서비스가 현재 화면의 UI 요소들을 실시간 감지
+   - 버튼, 텍스트, 이미지 등 모든 클릭 가능한 요소 인식
+
+4. **음성 명령 인식**
    - 인식된 텍스트가 화면 상단에 표시
-   - 신뢰도 점수와 함께 표시
+   - AI가 음성 명령을 분석하여 적절한 UI 요소 선택
 
-3. **AI 분석 및 응답**
-   - 인식된 텍스트를 AI가 분석
-   - AI 응답이 별도 영역에 표시
-   - TTS로 응답 음성 재생
-
-4. **액션 실행**
-   - AI 분석 결과에 따른 자동 액션 수행
-   - 앱 실행, 웹사이트 열기, 화면 터치 등
+5. **가상 터치 실행**
+   - 선택된 UI 요소에 애니메이션 효과와 함께 터치 실행
+   - 터치 임팩트로 시각적 피드백 제공
 
 ### **음성 입력 부족 시 대안**
 
@@ -111,131 +128,194 @@ flutter run
 ### **지원하는 음성 명령 예시**
 
 #### **기본 명령**
-- "1번을 클릭해줘" → 1번 앱 실행
-- "페이스북 열어줘" → Facebook 앱/웹사이트 실행
-- "유튜브 보여줘" → YouTube 실행
-- "카카오톡 열어줘" → KakaoTalk 실행
+- "네이버 클릭해줘" → 네이버 버튼 자동 클릭
+- "로그인 버튼 눌러줘" → 로그인 버튼 자동 터치
+- "검색창 클릭해줘" → 검색창 자동 선택
+- "메뉴 버튼 눌러줘" → 메뉴 버튼 자동 클릭
+
+#### **웹 브라우징 명령**
+- "네이버에서 검색해줘" → 네이버 검색창 클릭
+- "유튜브 재생 버튼 눌러줘" → 재생 버튼 자동 클릭
+- "페이스북 로그인해줘" → 로그인 버튼 자동 터치
 
 #### **복합 명령**
-- "3번 앱을 실행하고 로그인해줘"
-- "페이스북에서 친구 찾기"
-- "유튜브에서 음악 재생"
+- "네이버에서 검색하고 첫 번째 결과 클릭해줘"
+- "유튜브에서 동영상 재생하고 다음 버튼 눌러줘"
+- "페이스북에서 친구 찾기 버튼 클릭해줘"
 
 ## 🛠️ 기술적 세부사항
 
 ### **음성 녹음 설정**
 ```dart
 // 녹음 품질 설정
-sampleRate: 44100,  // 고품질 샘플링
+sampleRate: 16000,  // 음성 인식 최적화
 numChannels: 1,     // 모노 채널
 codec: Codec.pcm16WAV,  // WAV 포맷
+minDecibelThreshold: -50.0,  // 음성 감지 임계값
+voiceTimeout: Duration(seconds: 2),  // 무음 타임아웃
+maxRecordingTime: Duration(seconds: 10),  // 최대 녹음 시간
 ```
 
-### **자동 종료 조건**
-- **무음 감지**: 2초간 무음 시 자동 종료
-- **최대 시간**: 5초 후 강제 종료
-- **파일 크기**: 최소 512 bytes 이상 필요
+### **접근성 서비스 설정**
+```xml
+<!-- accessibility_service_config.xml -->
+<accessibility-service
+    android:description="@string/accessibility_service_description"
+    android:accessibilityEventTypes="typeAllMask"
+    android:accessibilityFlags="flagDefault|flagIncludeNotImportantViews|flagRequestTouchExplorationMode|flagRequestEnhancedWebAccessibility|flagReportViewIds|flagRetrieveInteractiveWindows"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:notificationTimeout="100"
+    android:canRetrieveWindowContent="true"
+    android:settingsActivity="com.example.prototype.MainActivity" />
+```
+
+### **가상 터치 설정**
+```kotlin
+// MyAccessibilityService.kt
+fun performClick(x: Float, y: Float) {
+    val path = Path()
+    path.moveTo(x, y)
+    
+    val gesture = GestureDescription.Builder()
+        .addStroke(GestureDescription.StrokeDescription(path, 0, 100))
+        .build()
+    
+    dispatchGesture(gesture, null, null)
+}
+```
 
 ### **볼륨 감지 알고리즘**
 ```dart
 // 실시간 볼륨 모니터링
-if (event.decibels! > -50) {
+if (event.decibels! > AppConfig.minDecibelThreshold) {
   // 음성 입력 감지
   _lastVoiceInputTime = DateTime.now();
   _silenceTimer?.cancel();
 } else {
   // 무음 감지 - 2초 타이머 시작
-  _silenceTimer ??= Timer(Duration(seconds: 2), () {
+  _silenceTimer ??= Timer(AppConfig.voiceTimeout, () {
     _stopRecordingAndProcess();
   });
 }
 ```
 
-### **AI 분석 프로세스**
-1. **음성 → 텍스트**: OpenAI Whisper API
-2. **명령 분석**: OpenAI GPT 모델
-3. **액션 결정**: 구조화된 JSON 응답
-4. **실행**: Flutter에서 액션 수행
+### **화면 요소 분석 프로세스**
+1. **접근성 이벤트 수신**: AccessibilityEvent 처리
+2. **UI 요소 파싱**: JSON 형태로 구조화
+3. **클릭 가능 요소 필터링**: isClickable = true인 요소들
+4. **좌표 계산**: 화면 좌표계 변환
 
-### **URL 자동 인식 시스템**
+### **가상 터치 프로세스**
+1. **음성 명령 인식**: OpenAI Whisper API
+2. **명령 분석**: OpenAI GPT 모델로 UI 요소 매칭
+3. **좌표 계산**: 선택된 요소의 중앙 좌표 계산
+4. **터치 실행**: GestureDescription API로 가상 터치
+5. **피드백 표시**: TouchIndicator 애니메이션
+
+### **터치 임팩트 시스템**
 ```dart
-class UrlUtils {
-  static String generateUrlFromService(String serviceName) {
-    // 200+ 서비스 매핑
-    final urlPatterns = {
-      'google': 'https://www.google.com',
-      'facebook': 'https://www.facebook.com',
-      'youtube': 'https://www.youtube.com',
-      // ... 더 많은 서비스
-    };
-  }
+class TouchIndicator extends StatefulWidget {
+  // 애니메이션 효과가 있는 터치 피드백
+  - 크기: 60x60 (확대된 크기)
+  - 애니메이션: elasticOut 커브로 자연스러운 효과
+  - 그림자: blurRadius 10, spreadRadius 2
+  - 투명도: 0.6 (선명한 표시)
+  - 지속시간: 300ms + 500ms 지연
+  - 위치: 터치한 버튼의 실제 위치에 표시
 }
 ```
 
-## 📱 UI/UX 개선사항
+### **접근성 이벤트 처리**
+```kotlin
+// MyAccessibilityService.kt
+override fun onAccessibilityEvent(event: AccessibilityEvent) {
+    when (event.eventType) {
+        AccessibilityEvent.TYPE_VIEW_CLICKED -> {
+            // 클릭 이벤트 처리
+        }
+        AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+            // 화면 내용 변경 감지
+        }
+        AccessibilityEvent.TYPE_VIEW_SCROLLED -> {
+            // 스크롤 이벤트 처리
+        }
+    }
+}
+```
 
-### **최신 UI 구조**
+## 📱 UI/UX 구조
+
+### **현재 UI 구조**
 
 #### **메인 화면 레이아웃**
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ 📱 LLM 음성 비서 프로토타입                    ⚙️ │
+│ 📱 LLM 음성 비서 프로토타입                    🎤 │
 ├─────────────────────────────────────────────────────────┤
 │ 🎤 음성 인식 결과 영역                              │
-│ "안녕하세요, 무엇을 도와드릴까요?"                   │
+│ "네이버 클릭해줘"                                   │
 │ 신뢰도: 0.95                                        │
 ├─────────────────────────────────────────────────────────┤
 │ 🤖 AI 응답 영역                                     │
-│ "1번 앱을 실행하겠습니다."                           │
+│ "네이버 버튼을 클릭하겠습니다."                      │
 ├─────────────────────────────────────────────────────────┤
 │ 📊 상태 표시                                        │
-│ 음성인식 완료                                        │
+│ 서버 연결 성공/실패                                  │
 ├─────────────────────────────────────────────────────────┤
-│ ⚠️ 음성 입력 부족                    [숫자 선택하기] │
+│ 👁️ 접근성 서비스 상태                               │
+│ 접근성 이벤트 수신 중...                             │
 ├─────────────────────────────────────────────────────────┤
-│ 📱 앱 그리드 (4x3)                                  │
-│ [1] [2] [3] [4]                                     │
-│ [5] [6] [7] [8]                                     │
-│ [9] [10] [11] [12]                                  │
+│ 📱 테스트 그리드 (4x3)                              │
+│ [Google] [YouTube] [Naver] [GitHub]                  │
+│ [Facebook] [Twitter] [Instagram] [LinkedIn]          │
+│ [Reddit] [StackOverflow] [Wikipedia] [Netflix]       │
 └─────────────────────────────────────────────────────────┘
 ```
 
-#### **숫자 선택 오버레이**
+#### **터치 임팩트 오버레이**
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    [반투명 배경]                      │
+│                    [화면 전체]                        │
 │                                                       │
-│              ┌─────────────────────┐                  │
-│              │     숫자 선택       │                  │
-│              │                     │                  │
-│              │  [1] [2] [3] [4] [5] │                  │
-│              │                     │                  │
-│              │       [취소]        │                  │
-│              └─────────────────────┘                  │
+│              🎯 터치 임팩트                          │
+│              ⭕ (애니메이션)                          │
+│              🔴 빨간색 원형                          │
+│              📱 터치 아이콘                          │
+│              📍 실제 터치 위치                        │
 │                                                       │
 └─────────────────────────────────────────────────────────┘
 ```
 
-### **UI 개선사항**
+### **UI 특징**
 
-#### **1. 레이아웃 최적화**
-- ❌ **제거**: 가운데 영역의 왼쪽 아래 '음성 입력 부족' 부분
-- ✅ **이동**: '숫자 선택하기' 버튼을 위쪽으로 이동
-- 🎯 **배치**: 음성 입력 부족 상태와 숫자 선택 버튼을 한 줄에 배치
+#### **1. 접근성 서비스 통합**
+- ✅ **실시간 화면 분석**: AccessibilityEvent로 UI 요소 감지
+- ✅ **터치 피드백**: TouchIndicator 애니메이션 효과
+- ✅ **상태 표시**: 서버 연결 및 접근성 서비스 상태 실시간 표시
+- ✅ **위치 기반 임팩트**: 터치한 버튼의 실제 위치에 임팩트 표시
 
-#### **2. 숫자 선택 UI 개선**
-- 🚫 **모달창 제거**: 기존 AlertDialog 방식 제거
-- ✅ **직접 표시**: 화면에 직접 오버레이로 표시
-- 🎨 **개선된 디자인**: 
-  - 반투명 배경 (Colors.black54)
-  - 흰색 컨테이너에 그림자 효과
-  - 60x60 크기의 원형 숫자 버튼들
-  - 취소 버튼 추가
+#### **2. 음성 인식 UI**
+- 🎤 **마이크 버튼**: 우상단에 위치한 음성 녹음 버튼
+- 📊 **실시간 피드백**: 볼륨 레벨 및 녹음 상태 표시
+- ⏱️ **자동 종료**: 무음 감지 또는 최대 시간 후 자동 종료
 
-#### **3. 사용자 경험 개선**
-- **직관적 배치**: 관련 기능들을 논리적으로 그룹화
-- **시각적 계층**: 중요도에 따른 UI 요소 배치
-- **반응형 디자인**: 다양한 화면 크기에 대응
+#### **3. 테스트 그리드**
+- 📱 **12개 테스트 버튼**: 4x3 그리드 레이아웃
+- 🔗 **URL 연결**: 각 버튼 클릭 시 해당 웹사이트 열기
+- 🎯 **가상 터치 테스트**: 버튼 클릭으로 가상 터치 기능 테스트
+- 📍 **위치 추적**: GlobalKey를 사용한 정확한 버튼 위치 추적
+
+#### **4. 터치 임팩트 시스템**
+- 🎯 **시각적 피드백**: 터치 위치에 빨간색 원형 표시
+- ⭕ **애니메이션**: elasticOut 커브로 자연스러운 확대/축소
+- 🔴 **그림자 효과**: blurRadius 10, spreadRadius 2
+- ⏱️ **지속시간**: 300ms + 500ms 지연으로 명확한 표시
+- 📍 **정확한 위치**: 터치한 버튼의 실제 중앙 좌표에 표시
+
+#### **5. 서버 연결 상태**
+- 🌐 **실시간 모니터링**: 백엔드 서버 연결 상태 표시
+- ⚠️ **오류 처리**: 연결 실패 시 상세한 오류 메시지
+- 🔄 **자동 재연결**: 네트워크 오류 시 자동 재시도
 
 ## 🔧 설정 및 구성
 
@@ -245,65 +325,94 @@ class UrlUtils {
 export OPENAI_API_KEY="your-api-key"
 
 # 서버 URL (기본값)
-export LLM_SERVER_URL="http://localhost:8000"
+export LLM_SERVER_URL="http://10.0.2.2:8000"  # Android 에뮬레이터용
 ```
 
-### **권한 설정**
+### **Android 권한 설정**
 ```xml
-<!-- Android 권한 -->
+<!-- AndroidManifest.xml -->
 <uses-permission android:name="android.permission.RECORD_AUDIO" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+<uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+<!-- 접근성 서비스 설정 -->
+<service
+    android:name=".MyAccessibilityService"
+    android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService" />
+    </intent-filter>
+    <meta-data
+        android:name="android.accessibilityservice"
+        android:resource="@xml/accessibility_service_config" />
+</service>
 ```
 
 ## 🐛 문제 해결
 
 ### **일반적인 문제들**
 
-#### **1. 음성 인식이 안 되는 경우**
+#### **1. 접근성 서비스 활성화 문제**
 ```bash
+# 설정에서 접근성 서비스 활성화
+Settings > Accessibility > 프로토타입 앱 > ON
+
 # 권한 확인
 flutter doctor
-
-# 에뮬레이터 마이크 설정
-# Settings > System > Languages & input > Virtual keyboard > Google Keyboard > Preferences > Voice input key
 ```
 
 #### **2. 서버 연결 오류**
 ```bash
 # 백엔드 서버 상태 확인
-curl http://localhost:8000/health
+curl http://127.0.0.1:8000
 
-# 포트 확인
-netstat -an | grep 8000
+# Android 에뮬레이터 네트워크 설정
+# 10.0.2.2:8000으로 연결 확인
 ```
 
-#### **3. 파일 크기 부족 오류**
-- **원인**: 짧은 음성 입력으로 인한 작은 파일
-- **해결**: 더 명확하고 길게 발음
-- **대안**: 숫자 선택 기능 사용
+#### **3. 가상 터치가 작동하지 않는 경우**
+- **원인**: 접근성 서비스 권한 부족
+- **해결**: 설정에서 접근성 서비스 재활성화
+- **확인**: 로그에서 "접근성 이벤트 수신" 메시지 확인
 
-#### **4. 권한 오류**
+#### **4. 음성 인식 오류**
 ```bash
-# 권한 재설정
+# 마이크 권한 확인
+Settings > Apps > 프로토타입 > Permissions > Microphone
+
+# 앱 재시작
 flutter clean
 flutter pub get
 flutter run
 ```
 
+#### **5. 터치 임팩트가 보이지 않는 경우**
+- **원인**: TouchIndicator import 누락 또는 위치 계산 오류
+- **해결**: GlobalKey를 사용한 정확한 위치 계산
+- **확인**: 터치한 버튼의 실제 위치에 임팩트 표시 확인
+
 ### **디버깅 팁**
 ```dart
-// 로그 확인
+// 접근성 이벤트 로그 확인
+print('👁️ 접근성 이벤트 수신: $eventData');
+
+// 가상 터치 로그 확인
+print('🎯 가상 터치 실행: ($x, $y)');
+
+// 음성 인식 로그 확인
 print('🎤 볼륨 감지: ${event.decibels}dB');
 print('📊 파일 크기: ${fileSize} bytes');
 print('🎯 음성 인식 결과: $transcript');
+
+// 터치 임팩트 로그 확인
+print('✨ 터치 임팩트 표시: ($x, $y)');
 ```
 
 ## 📈 성능 최적화
 
 ### **녹음 품질 최적화**
-- **샘플링 레이트**: 44100 Hz (고품질)
+- **샘플링 레이트**: 16000 Hz (음성 인식 최적화)
 - **채널**: 모노 (1채널)
 - **코덱**: PCM16 WAV (압축 없음)
 
@@ -313,13 +422,32 @@ print('🎯 음성 인식 결과: $transcript');
 - **타이머 관리**: 메모리 누수 방지
 
 ### **네트워크 최적화**
-- **타임아웃 설정**: 30초
+- **타임아웃 설정**: 5초
 - **재시도 로직**: 3회 시도
 - **에러 핸들링**: 네트워크 오류 대응
 
+### **터치 임팩트 최적화**
+- **애니메이션 성능**: 60fps 유지
+- **메모리 효율성**: 자동 해제로 메모리 누수 방지
+- **위치 정확성**: GlobalKey 기반 정확한 좌표 계산
+
 ## 🔄 최근 업데이트
 
-### **v2.1.0 (현재)**
+### **v3.1.0 (현재)**
+- ✅ **터치 임팩트 개선**: 실제 터치 위치에 정확한 임팩트 표시
+- ✅ **GlobalKey 시스템**: 버튼 위치 정확한 추적
+- ✅ **애니메이션 최적화**: elasticOut 커브로 자연스러운 효과
+- ✅ **서버 연결 상태**: 실시간 백엔드 연결 모니터링
+- ✅ **오류 처리 개선**: 상세한 오류 메시지 및 재시도 로직
+
+### **v3.0.0**
+- ✅ **Android 접근성 서비스 통합**: MyAccessibilityService.kt 구현
+- ✅ **실시간 화면 요소 감지**: AccessibilityEvent 처리
+- ✅ **가상 터치 시스템**: GestureDescription API 활용
+- ✅ **터치 임팩트 애니메이션**: TouchIndicator 위젯 개선
+- ✅ **웹 브라우징 지원**: 크롬 브라우저 내 요소 자동 클릭
+
+### **v2.1.0**
 - ✅ **UI 레이아웃 개선**: 음성 입력 부족 영역 최적화
 - ✅ **숫자 선택 UI 개선**: 모달창 → 직접 오버레이 표시
 - ✅ **사용자 경험 향상**: 더 직관적인 인터페이스
@@ -357,4 +485,33 @@ print('🎯 음성 인식 결과: $transcript');
 
 **개발자**: AI Assistant  
 **최종 업데이트**: 2024년 12월  
-**버전**: 2.1.0
+**버전**: 3.1.0
+
+### 🎯 **현재 구현된 기능들**
+
+#### **✅ 완료된 기능**
+- **Android 접근성 서비스**: MyAccessibilityService.kt 구현
+- **실시간 화면 분석**: AccessibilityEvent 처리
+- **가상 터치 시스템**: GestureDescription API 활용
+- **터치 피드백**: TouchIndicator 애니메이션 (실제 위치 기반)
+- **음성 인식**: OpenAI Whisper API 연동
+- **AI 분석**: OpenAI GPT 모델 연동
+- **웹 브라우징**: 크롬 브라우저 내 요소 클릭
+- **테스트 UI**: 12개 웹사이트 테스트 버튼 (4x3 그리드)
+- **서버 연결 상태**: 실시간 백엔드 연결 모니터링
+
+#### **🔄 현재 작동 중인 기능**
+- 접근성 이벤트 실시간 수신
+- 화면 UI 요소 자동 감지
+- 터치 임팩트 시각적 피드백 (정확한 위치)
+- 서버 연결 상태 표시
+- 음성 녹음 및 인식
+- 가상 터치 실행
+- GlobalKey 기반 버튼 위치 추적
+
+#### **📱 테스트 가능한 기능**
+- 크롬 브라우저에서 네이버 페이지 탐색
+- 웹페이지 내 버튼 자동 클릭
+- 터치 임팩트 애니메이션 확인 (실제 터치 위치)
+- 접근성 이벤트 로그 확인
+- 서버 연결 상태 실시간 모니터링
